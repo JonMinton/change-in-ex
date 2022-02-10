@@ -2,6 +2,7 @@
 .Rhistory
 .Rapp.history
 
+my_credentials/
 # Session Data files
 .RData
 
