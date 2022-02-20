@@ -19,6 +19,11 @@ This is something that's *quite* important.
 
 This is something that's **really** important.
 
+## An important subheading 
+
+
+This is where I'll start talking about my methods and things....
+
 
 
 ## R Markdown
