@@ -1,0 +1,173 @@
+---
+title: "How do changes in ex vary between countries?"
+author: "Jon Minton"
+date: "22/02/2022"
+output:
+  word_document: default
+  html_document: default
+---
+
+# Introduction 
+
+This notebook will compare annual changes in life expectancy at both birth ($e_0$) and at age 65 ($e_{65}$) in the UK and UK nations, with other select European nations, including a 'Synthetic Germany' created from a weighted average of East and West German data for common years. The method for creating this 'Synthetic Germany' is also described in this and linked documents. 
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+# Methods 
+
+## Data 
+
+Data were extracted from the [Human Mortality Database](https://mortality.org/) via the R package [`HMDHFDplus`](http://www.demogr.mpg.de/en/projects_publications/publications_1904/mpidr_technical_reports/reading_human_fertility_database_and_human_mortality_database_data_into_r_5438.htm). 
+
+The following countries are included in the comparison:
+
+- England & Wales (`GBRTENW`)
+- Scotland (`GBR_SCO`)
+- UK as a whole (`GBR_UK`)
+- France (`FRANTP`)
+- Spain (`ESP`)
+- Italy (`ITA`)
+- Germany
+   - Total Germany (`DEUTNP`)
+   - East Germany (`DEUTE`)
+   - West Germany (`DEUTW`)
+   - Simulated/Synthetic Germany
+ 
+
+```{r, echo=FALSE}
+# load packages
+
+pacman::p_load(here, tidyverse)
+
+# load data 
+
+hmd_lt <- read_rds(here("data", "lifetables.rds"))
+
+```
+
+## Analysis 
+
+For each of these countries, and for males and females separately, we are interested in the annual changes in life expectancy at birth ($e_0$) and life expectancy at age 65 ($e_{65}$), from 1980 to the last available year for each country. 
+
+```{r, echo = FALSE}
+
+countries_of_interest <- c(
+  "GBRTENW",
+  "GBR_SCO",
+  "GBR_UK",
+  "FRATNP",
+  "ESP",
+  "ITA",
+  "DEUTNP",
+  "DEUTE", 
+  "DEUTW"
+)
+
+hmd_ex_selected_countries <- 
+  hmd_lt %>% 
+    filter(code %in% countries_of_interest) %>% 
+    filter(Age %in% c(0, 65)) %>% 
+    select(code, Year, Age, sex, ex) %>% 
+    rename(x = Age, year = Year)
+
+hmd_ex_selected_countries
+
+
+
+
+```
+
+# Results
+
+## Descriptive Results /Starter Eyeballing
+
+### Life expectancy trends 
+
+The following shows life expectancy at birth and at age 65 for selected nations:
+
+
+Here it is at birth...
+
+
+```{r, echo = FALSE, fig.cap = "Life Expectancy at birth"}
+
+hmd_ex_selected_countries %>% 
+  filter(between(year, 1980, 2020)) %>% 
+  filter(x == 0) %>% 
+  ggplot(aes(x = year, y = ex, group = sex, colour = sex, linetype = sex)) + 
+  geom_line() +
+  facet_wrap(~code) +
+  labs(
+    x = "Year",
+    y = "Life Expectancy at birth",
+    title = "Life expectancies at birth for selected nations",
+    subtitle = "1980 to 2020 or latest available year",
+    caption = "Source: Human Mortality Database"
+  )
+
+
+
+```
+
+
+Here it is at age 65
+
+```{r, echo = FALSE, fig.cap = "Life Expectancy at age 65"}
+hmd_ex_selected_countries %>% 
+  filter(between(year, 1980, 2020)) %>% 
+  filter(x == 65) %>% 
+  ggplot(aes(x = year, y = ex, group = sex, colour = sex, linetype = sex)) + 
+  geom_line() +
+  facet_wrap(~code) +
+  labs(
+    x = "Year",
+    y = "Life Expectancy at age 65",
+    title = "Life expectancies at age 65 for selected nations",
+    subtitle = "1980 to 2020 or latest available year",
+    caption = "Source: Human Mortality Database"
+  )
+
+```
+
+Some insightful comment about what's going on.
+
+Scotland looks pretty bad compared with the other countries. 
+
+
+## Change in life expectancy in these nations 
+
+```{r}
+change_in_ex_selected_countries <- 
+  hmd_ex_selected_countries %>% 
+    group_by(code, x, sex) %>% 
+    arrange(year) %>% 
+    mutate(delta_ex = ex - lag(ex)) %>% 
+    ungroup() 
+    
+
+change_in_ex_selected_countries
+```
+
+```{r}
+change_in_ex_selected_countries %>% 
+  filter(between(year, 1980, 2020)) %>% 
+  ggplot(aes(x = year, y = delta_ex)) + 
+  geom_point(alpha = 0.2) + 
+  stat_smooth() + 
+  facet_grid(code~sex) + 
+  geom_hline(yintercept = 0)
+
+
+```
+
+
+
+# Discussion
+
+
+# Bibliography
+
+

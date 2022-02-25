@@ -26,7 +26,8 @@ if (!file.exists(here("data", "e0.rds"))){
     ) %>% 
     mutate(data = map(code, ~readHMDweb(.x, "E0per", my_username, my_password))) %>% 
     unnest(data) %>% 
-    pivot_longer(c("Female", "Male", "Total"), names_to = "sex", values_to = "e0") %>% 
+    pivot_longer(c("Female", "Male", "Total"), names_to = "sex", values_to = "e0") %>%
+    rename(year = Year) %>% 
     mutate(sex = tolower(sex))
   hmd_e0
   

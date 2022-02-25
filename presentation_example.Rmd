@@ -1,0 +1,120 @@
+---
+title: "results_so_far"
+author: "Jon Minton"
+date: "24/02/2022"
+output: ioslides_presentation
+---
+
+
+
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+
+## Data 
+
+- England & Wales (`GBRTENW`)
+- Scotland (`GBR_SCO`)
+- UK as a whole (`GBR_UK`)
+- France (`FRANTP`)
+- Spain (`ESP`)
+- Italy (`ITA`)
+- Germany
+   - Total Germany (`DEUTNP`)
+   - East Germany (`DEUTE`)
+   - West Germany (`DEUTW`)
+   - Simulated/Synthetic Germany
+ 
+
+```{r, echo=FALSE}
+# load packages
+
+pacman::p_load(here, tidyverse)
+
+# load data 
+
+hmd_lt <- read_rds(here("data", "lifetables.rds"))
+
+```
+
+## Analysis 
+
+For each of these countries, and for males and females separately, we are interested in the annual changes in life expectancy at birth ($e_0$) and life expectancy at age 65 ($e_{65}$), from 1980 to the last available year for each country. 
+
+```{r, echo = FALSE}
+
+countries_of_interest <- c(
+  "GBRTENW",
+  "GBR_SCO",
+  "GBR_UK",
+  "FRATNP",
+  "ESP",
+  "ITA",
+  "DEUTNP",
+  "DEUTE", 
+  "DEUTW"
+)
+
+hmd_ex_selected_countries <- 
+  hmd_lt %>% 
+    filter(code %in% countries_of_interest) %>% 
+    filter(Age %in% c(0, 65)) %>% 
+    select(code, Year, Age, sex, ex) %>% 
+    rename(x = Age, year = Year)
+
+hmd_ex_selected_countries
+
+
+
+
+```
+
+## Life expectancy at birth
+
+
+```{r, echo = FALSE, fig.cap = "Life Expectancy at birth"}
+
+hmd_ex_selected_countries %>% 
+  filter(between(year, 1980, 2020)) %>% 
+  filter(x == 0) %>% 
+  ggplot(aes(x = year, y = ex, group = sex, colour = sex, linetype = sex)) + 
+  geom_line() +
+  facet_wrap(~code) +
+  labs(
+    x = "Year",
+    y = "Life Expectancy at birth",
+    title = "Life expectancies at birth for selected nations",
+    subtitle = "1980 to 2020 or latest available year",
+    caption = "Source: Human Mortality Database"
+  )
+
+
+
+```
+
+
+## life expectancy at age 65
+
+```{r, echo = FALSE, fig.cap = "Life Expectancy at age 65"}
+hmd_ex_selected_countries %>% 
+  filter(between(year, 1980, 2020)) %>% 
+  filter(x == 65) %>% 
+  ggplot(aes(x = year, y = ex, group = sex, colour = sex, linetype = sex)) + 
+  geom_line() +
+  facet_wrap(~code) +
+  labs(
+    x = "Year",
+    y = "Life Expectancy at age 65",
+    title = "Life expectancies at age 65 for selected nations",
+    subtitle = "1980 to 2020 or latest available year",
+    caption = "Source: Human Mortality Database"
+  )
+
+```
+
+
+
+
