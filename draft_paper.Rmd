@@ -48,9 +48,18 @@ hmd_lt <- read_rds(here("data", "lifetables.rds"))
 
 ```
 
+
 ## Analysis 
 
 For each of these countries, and for males and females separately, we are interested in the annual changes in life expectancy at birth ($e_0$) and life expectancy at age 65 ($e_{65}$), from 1980 to the last available year for each country. 
+
+### Synthetic Germany 
+
+- To maybe be moved to the appendix later 
+
+To allow UK national trends to be compared with a single German population, we attempted to produce a 'Synthetic German' population with data for East and West Germany for years prior to reunification. We estimated that this 'Synthetic Germany' could be produced by using a weighted average of 20% East Germany, and 80% West German life expectancy trends. More precise estimates can be produced, and the methods used to reach this conclusion are detailed in Appendix X. 
+
+
 
 ```{r, echo = FALSE}
 
@@ -76,7 +85,139 @@ hmd_ex_selected_countries <-
 hmd_ex_selected_countries
 
 
+# Code for producing synthetic Germany
 
+source(here("R", "make_synthetic_germany_functions.R"))
+
+series_east_f0 <- hmd_ex_selected_countries %>% 
+  filter(code == "DEUTE") %>% 
+  filter(between(year, 1980, 2020)) %>% 
+  filter(x == 0) %>% 
+  filter(sex == "female") %>% 
+  arrange(year) %>% 
+  pull(ex)
+
+series_west_f0 <- hmd_ex_selected_countries %>% 
+  filter(code == "DEUTW") %>% 
+  filter(between(year, 1980, 2020)) %>% 
+  filter(x == 0) %>% 
+  filter(sex == "female") %>% 
+  arrange(year) %>% 
+  pull(ex)
+
+
+tmp_df_f0 <- tibble(
+  code = "DEUTSYNTH",
+  year = 1980:2017,
+  x = 0,
+  sex = "female", 
+  ex = make_synthetic_population(series_east_f0, series_west_f0, p_east = 0.2)
+)
+
+###
+series_east_f65 <- hmd_ex_selected_countries %>% 
+  filter(code == "DEUTE") %>% 
+  filter(between(year, 1980, 2020)) %>% 
+  filter(x == 65) %>% 
+  filter(sex == "female") %>% 
+  arrange(year) %>% 
+  pull(ex)
+
+series_west_f65 <- hmd_ex_selected_countries %>% 
+  filter(code == "DEUTW") %>% 
+  filter(between(year, 1980, 2020)) %>% 
+  filter(x == 65) %>% 
+  filter(sex == "female") %>% 
+  arrange(year) %>% 
+  pull(ex)
+
+
+tmp_df_f65 <- tibble(
+  code = "DEUTSYNTH",
+  year = 1980:2017,
+  x = 65,
+  sex = "female", 
+  ex = make_synthetic_population(series_east_f65, series_west_f65, p_east = 0.2)
+)
+##
+
+series_east_m0 <- hmd_ex_selected_countries %>% 
+  filter(code == "DEUTE") %>% 
+  filter(between(year, 1980, 2020)) %>% 
+  filter(x == 0) %>% 
+  filter(sex == "male") %>% 
+  arrange(year) %>% 
+  pull(ex)
+
+series_west_m0 <- hmd_ex_selected_countries %>% 
+  filter(code == "DEUTW") %>% 
+  filter(between(year, 1980, 2020)) %>% 
+  filter(x == 0) %>% 
+  filter(sex == "male") %>% 
+  arrange(year) %>% 
+  pull(ex)
+
+
+tmp_df_m0 <- tibble(
+  code = "DEUTSYNTH",
+  year = 1980:2017,
+  x = 0,
+  sex = "male", 
+  ex = make_synthetic_population(series_east_m0, series_west_m0, p_east = 0.2)
+)
+
+
+###
+
+series_east_m65 <- hmd_ex_selected_countries %>% 
+  filter(code == "DEUTE") %>% 
+  filter(between(year, 1980, 2020)) %>% 
+  filter(x == 65) %>% 
+  filter(sex == "male") %>% 
+  arrange(year) %>% 
+  pull(ex)
+
+series_west_m65 <- hmd_ex_selected_countries %>% 
+  filter(code == "DEUTW") %>% 
+  filter(between(year, 1980, 2020)) %>% 
+  filter(x == 65) %>% 
+  filter(sex == "male") %>% 
+  arrange(year) %>% 
+  pull(ex)
+
+
+tmp_df_m65 <- tibble(
+  code = "DEUTSYNTH",
+  year = 1980:2017,
+  x = 65,
+  sex = "male", 
+  ex = make_synthetic_population(series_east_m65, series_west_m65, p_east = 0.2)
+)
+
+
+hmd_ex_selected_countries_with_synth <- bind_rows(
+  hmd_ex_selected_countries,
+  tmp_df_m0,
+  tmp_df_m65,
+  tmp_df_f0,
+  tmp_df_f65
+)
+
+# Labels for codes 
+
+country_code_lookup <- 
+  tribble(
+    ~code, ~country,
+    "DEUTNP", "Germany",
+    "DEUTE", "East Germany",
+    "DEUTW", "West Germany",
+    "ESP", "Spain",
+    "FRATNP", "France", 
+    "ITA", "Italy",
+    "GBRTENW", "England & Wales",
+    "GBR_SCO", "Scotland",
+    "DEUTSYNTH", "Synthetic Germany"
+  )
 
 ```
 
@@ -94,12 +235,14 @@ Here it is at birth...
 
 ```{r, echo = FALSE, fig.cap = "Life Expectancy at birth"}
 
-hmd_ex_selected_countries %>% 
+hmd_ex_selected_countries_with_synth %>% 
+  left_join(country_code_lookup) %>% 
+  mutate(country = factor(country, levels = c("England & Wales", "Scotland", "East Germany", "West Germany", "Germany", "Synthetic Germany", "Spain", "France", "Italy"))) %>% 
   filter(between(year, 1980, 2020)) %>% 
   filter(x == 0) %>% 
   ggplot(aes(x = year, y = ex, group = sex, colour = sex, linetype = sex)) + 
   geom_line() +
-  facet_wrap(~code) +
+  facet_wrap(~country) +
   labs(
     x = "Year",
     y = "Life Expectancy at birth",
@@ -116,12 +259,14 @@ hmd_ex_selected_countries %>%
 Here it is at age 65
 
 ```{r, echo = FALSE, fig.cap = "Life Expectancy at age 65"}
-hmd_ex_selected_countries %>% 
+hmd_ex_selected_countries_with_synth %>% 
+  left_join(country_code_lookup) %>% 
+  mutate(country = factor(country, levels = c("England & Wales", "Scotland", "East Germany", "West Germany", "Germany", "Synthetic Germany", "Spain", "France", "Italy"))) %>% 
   filter(between(year, 1980, 2020)) %>% 
   filter(x == 65) %>% 
   ggplot(aes(x = year, y = ex, group = sex, colour = sex, linetype = sex)) + 
   geom_line() +
-  facet_wrap(~code) +
+  facet_wrap(~country) +
   labs(
     x = "Year",
     y = "Life Expectancy at age 65",
@@ -141,7 +286,7 @@ Scotland looks pretty bad compared with the other countries.
 
 ```{r}
 change_in_ex_selected_countries <- 
-  hmd_ex_selected_countries %>% 
+  hmd_ex_selected_countries_with_synth %>% 
     group_by(code, x, sex) %>% 
     arrange(year) %>% 
     mutate(delta_ex = ex - lag(ex)) %>% 
@@ -153,12 +298,23 @@ change_in_ex_selected_countries
 
 ```{r}
 change_in_ex_selected_countries %>% 
+  filter(x == 0) %>% 
+  left_join(country_code_lookup) %>% 
+  mutate(country = factor(country, levels = c("England & Wales", "Scotland", "East Germany", "West Germany", "Germany", "Synthetic Germany", "Spain", "France", "Italy"))) %>% 
   filter(between(year, 1980, 2020)) %>% 
   ggplot(aes(x = year, y = delta_ex)) + 
   geom_point(alpha = 0.2) + 
   stat_smooth() + 
-  facet_grid(code~sex) + 
-  geom_hline(yintercept = 0)
+  facet_grid(country~sex) + 
+  geom_hline(yintercept = 0) + 
+  theme(strip.text.y = element_text(angle = 0)) + 
+  labs(
+    x = "Year",
+    y = "Year-on-year change in life expectancy",
+    title = "Annual change in life expectancy at birth, selected countries",
+    subtitle = "Blue line: nonlinear smoother",
+    caption =  "Source: Human Mortality Database. Synthetic Germany based on 20% East/80% West German population weighting"
+  )
 
 
 ```

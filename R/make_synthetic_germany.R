@@ -350,4 +350,3 @@ synth_germany_best_shares_via_optim %>%
 # when no unified Germany existed), and how to move towards more automated and standardised ways of 
 # solving such problems in more general cases through functions and functional programming.
 
-
