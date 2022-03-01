@@ -3,8 +3,8 @@ title: "How do changes in ex vary between countries?"
 author: "Jon Minton"
 date: "22/02/2022"
 output:
-  word_document: default
   html_document: default
+  word_document: default
 ---
 
 # Introduction 
@@ -295,8 +295,10 @@ change_in_ex_selected_countries <-
 
 change_in_ex_selected_countries
 ```
+### Changes in life expectancy at birth 
 
-```{r}
+
+```{r, echo = FALSE, warning=FALSE, message = FALSE, fig.height=8, fig.width=8}
 change_in_ex_selected_countries %>% 
   filter(x == 0) %>% 
   left_join(country_code_lookup) %>% 
@@ -319,9 +321,90 @@ change_in_ex_selected_countries %>%
 
 ```
 
+### Changes in life expectancy at age 65 
+
+```{r, echo = FALSE, warning=FALSE, message = FALSE, fig.height=8, fig.width=8}
+change_in_ex_selected_countries %>% 
+  filter(x == 65) %>% 
+  left_join(country_code_lookup) %>% 
+  mutate(country = factor(country, levels = c("England & Wales", "Scotland", "East Germany", "West Germany", "Germany", "Synthetic Germany", "Spain", "France", "Italy"))) %>% 
+  filter(between(year, 1980, 2020)) %>% 
+  ggplot(aes(x = year, y = delta_ex, colour=sex)) + 
+  geom_point(alpha = 0.2) + 
+  stat_smooth() + 
+  facet_grid(country~sex) + 
+  geom_hline(yintercept = 0) + 
+  theme(strip.text.y = element_text(angle = 0)) + 
+  labs(
+    x = "Year",
+    y = "Year-on-year change in life expectancy",
+    title = "Annual change in life expectancy at age 65, selected countries",
+    subtitle = "Blue line: nonlinear smoother",
+    caption =  "Source: Human Mortality Database. Synthetic Germany based on 20% East/80% West German population weighting"
+  )
+
+
+```
 
 
 # Discussion
+
+
+# Time trends 
+
+```{r}
+
+hmd_ex_selected_countries_with_synth %>% 
+    filter(year >= 1979) %>% 
+    group_by(code, x, sex) %>% 
+    arrange(year) %>% 
+    mutate(delta_ex = ex - lag(ex)) %>% 
+    nest() %>% 
+    mutate(
+      rwd_model = map(data, ~lm(delta_ex ~ 1, data = . )),
+      ar_model  = map(data, ~lm(delta_ex ~ lag(delta_ex), data = .))
+    ) %>% 
+    mutate(
+      aic_rwd = map_dbl(rwd_model, AIC),
+      aic_ar  = map_dbl(ar_model, AIC)
+    ) %>% 
+    mutate(
+      diff_aic = aic_ar - aic_rwd
+    )  %>% 
+  # filter(diff_aic > 0)
+  mutate(
+    tidied_ar_model = map(ar_model, broom::tidy)
+  ) %>% 
+  unnest(tidied_ar_model) %>% 
+  filter(term == "(Intercept)") %>% 
+  arrange(desc(estimate)) %>% 
+  select(code, x, sex, estimate, std.error) %>% 
+  mutate(display_label = glue::glue("{code}_{x}_{sex}")) %>% 
+  ggplot(aes(estimate, fct_reorder(display_label, estimate))) + 
+  geom_point()
+
+
+```
+
+Look at improvements by decade
+
+```{r}
+
+hmd_ex_selected_countries_with_synth %>% 
+    filter(year >= 1979) %>% 
+    group_by(code, x, sex) %>% 
+    arrange(year) %>% 
+    mutate(decade = year - (year %% 10)) %>% 
+    mutate(delta_ex = ex - lag(ex)) %>%
+    nest() %>%
+    mutate(
+      rwd_model = map(data, ~lm(delta_ex ~ factor(decade), data = . ))
+     )  %>%
+  mutate(
+    tidied_rwd_model = map(rwd_model, broom::tidy)
+  ) %>%
+  unnest(tidied_rwd_model)
+```
 
 
 # Bibliography
