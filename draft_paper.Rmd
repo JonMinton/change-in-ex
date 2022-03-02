@@ -41,7 +41,8 @@ The following countries are included in the comparison:
 ```{r, echo=FALSE}
 # load packages
 
-pacman::p_load(here, tidyverse)
+pacman::p_load(here, tidyverse, flextable) # using flextable instead of gt. It seems to be better 
+# developed, more commonly used, and has more clearly labelled function names.
 
 # load data 
 
@@ -397,20 +398,35 @@ hmd_ex_selected_countries_with_synth %>%
     filter(year >= 1979) %>% 
     group_by(code, x, sex) %>% 
     arrange(year) %>% 
-    mutate(decade = year - (year %% 10)) %>% 
     mutate(delta_ex = ex - lag(ex)) %>%
-    nest() %>%
-    mutate(
-      rwd_model = map(data, ~lm(delta_ex ~ factor(decade), data = . ))
-     )  %>%
-  mutate(
-    tidied_rwd_model = map(rwd_model, broom::tidy)
-  ) %>%
-  unnest(tidied_rwd_model)
+    mutate(decade = year - (year %% 10)) %>% 
+    filter(!is.na(delta_ex)) %>% 
+  group_by(code, x, sex, decade) %>% 
+  summarise(
+    mean_delta_ex = mean(delta_ex),
+    sd_delta_ex   = sd(delta_ex)
+    ) %>% 
+  ungroup() %>% 
+  mutate(cell_contents = glue::glue("{round(mean_delta_ex, 3)} ({round(sd_delta_ex, 3)})")
+  ) %>% 
+  filter(code == "GBRTENW") %>% 
+  filter(x == 0) %>% 
+  select(sex, decade, cell_contents) %>% 
+  spread(decade, cell_contents) %>% 
+  flextable() 
+
+
+
 ```
 
 # Discussion
-Limitations: fewer years for comparison in 2010s; comparing different time periods will provide different results.
+
+- **Limitations**: fewer years for comparison in 2010s; comparing different time periods will provide different results.
+- Add description of what this needs 
+
+# Appendix A: Construction of Synthetic Germany 
+
+- Add further details here. 
 
 # Bibliography
 
