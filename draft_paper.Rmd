@@ -416,6 +416,11 @@ hmd_ex_selected_countries_with_synth %>%
 
 ```
 
+- Add description of what this needs 
+
+# Appendix A: Construction of Synthetic Germany 
+
+- Add further details here. 
 
 # Bibliography
 
