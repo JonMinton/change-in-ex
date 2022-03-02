@@ -9,7 +9,7 @@ output:
 
 # Introduction 
 
-This notebook will compare annual changes in life expectancy at both birth ($e_0$) and at age 65 ($e_{65}$) in the UK and UK nations, with other select European nations, including a 'Synthetic Germany' created from a weighted average of East and West German data for common years. The method for creating this 'Synthetic Germany' is also described in this and linked documents. 
+This notebook will compare annual changes in life expectancy at both birth ($e_0$) and at age 65 ($e_{65}$) from 1980 to 2019 (or the latest available year) in England and Wales, Scotland, France, Italy, Spains and Germany. Germany includes a 'Synthetic Germany' created from a weighted average of East and West German data for common years. The method for creating this 'Synthetic Germany' is covered in the methods section in brief and in Appendix X for more detail.
 
 
 ```{r setup, include=FALSE}
@@ -35,6 +35,8 @@ The following countries are included in the comparison:
    - East Germany (`DEUTE`)
    - West Germany (`DEUTW`)
    - Simulated/Synthetic Germany
+
+In order to explore the hypothesis that the recent stallin in life expectancy, most marked in England and Wales, was an expected 'correction' after a decade of unusually fast life expectancy improvements, we have selected the years from 1980 onwards.
  
 
 ```{r, echo=FALSE}
@@ -228,7 +230,7 @@ country_code_lookup <-
 
 ### Life expectancy trends 
 
-The following shows life expectancy at birth and at age 65 for selected nations:
+The following figures show life expectancy at birth and at age 65 for selected nations from 1980 to the latest available year.
 
 
 Here it is at birth...
@@ -284,6 +286,7 @@ Scotland looks pretty bad compared with the other countries.
 
 
 ## Change in life expectancy in these nations 
+Next, we compare the annual change in life expectancy at birth and at aged 65 years for the 6 nations from 1980 to the latest available year, by sex.
 
 ```{r}
 change_in_ex_selected_countries <- 
@@ -352,6 +355,7 @@ change_in_ex_selected_countries %>%
 
 
 # Time trends 
+Finally, we used time-trend analysis to explore the changes in life expectancy over the 4 decades: 1980s, 1990s, 2000s, and 2010s. This produces the average change for the decade, whether negative or positive, the standard error and its statistical significance for each country by sex.
 
 ```{r}
 
@@ -416,6 +420,9 @@ hmd_ex_selected_countries_with_synth %>%
 
 ```
 
+# Discussion
+
+- **Limitations**: fewer years for comparison in 2010s; comparing different time periods will provide different results.
 - Add description of what this needs 
 
 # Appendix A: Construction of Synthetic Germany 
