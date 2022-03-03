@@ -11,6 +11,7 @@ output:
 
 This notebook will compare annual changes in life expectancy at both birth ($e_0$) and at age 65 ($e_{65}$) from 1980 to 2019 (or the latest available year) in England and Wales, Scotland, France, Italy, Spains and Germany. Germany includes a 'Synthetic Germany' created from a weighted average of East and West German data for common years. The method for creating this 'Synthetic Germany' is covered in the methods section in brief and in Appendix X for more detail.
 
+THIS LINE IS A TEST FOR LU EDITING RMD IN R STUDIO HAVING CLONED THE GITHUB FILE
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = FALSE)
