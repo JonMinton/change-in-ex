@@ -19,6 +19,7 @@ Stalling of life expectancy improvements occurred in the UK from 2010 onwards. I
 
 This notebook will compare annual changes in life expectancy at both birth ($e_0$) and at age 65 ($e_{65}$) from 1980 to 2019 (or the latest available year) in England and Wales, Scotland, France, Italy, Spains and Germany. Germany includes a 'Synthetic Germany' created from a weighted average of East and West German data for common years. The method for creating this 'Synthetic Germany' is covered in the methods section in brief and in Appendix X for more detail. In order to explore the hypothesis that the recent stalling in life expectancy, most marked in England and Wales, was an expected 'correction' after a decade of unusually fast life expectancy improvements, we have selected the years from 1980 onwards.
 
+This is a new test using R Studio on Lu's desktop in line 22
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(
