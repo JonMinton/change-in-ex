@@ -15,7 +15,7 @@ output:
 
 Stalling of life expectancy improvements occurred in the UK from 2010 onwards. It was also seen in some other Western European countries. While the reason and severity of this is debated, some also contend the stalling of improvements seen is artefact following an unusual decade of improvement in 2000s (Murphy 2021).
 
--[ ] Introduction to be written once methods/results discussed and decided on
+- [ ] Introduction to be written once methods/results discussed and decided on
 
 This notebook will compare annual changes in life expectancy at both birth ($e_0$) and at age 65 ($e_{65}$) from 1980 to 2019 (or the latest available year) in England and Wales, Scotland, France, Italy, Spains and Germany. Germany includes a 'Synthetic Germany' created from a weighted average of East and West German data for common years. The method for creating this 'Synthetic Germany' is covered in the methods section in brief and in Appendix X for more detail. In order to explore the hypothesis that the recent stalling in life expectancy, most marked in England and Wales, was an expected 'correction' after a decade of unusually fast life expectancy improvements, we have selected the years from 1980 onwards.
 
@@ -41,7 +41,7 @@ The following countries are included in the comparison:
 
 - England & Wales (`GBRTENW`)
 - Scotland (`GBR_SCO`)
-- UK as a whole (`GBR_UK`) #we gaven't included UK but can do
+- UK as a whole (`GBR_UK`) #we haven't included UK but can do
 - France (`FRANTP`)
 - Spain (`ESP`)
 - Italy (`ITA`)
@@ -464,7 +464,7 @@ hmd_ex_selected_countries_with_synth %>%
 
 ```
 
-####Are the differences by decade statistically significant? 
+###Are the differences by decade statistically significant? 
 To assess whether the changes by decade are statistically significant, we carried out [Jon please could you write a little more here?]
 We found the only significant change decade-on-decades was for East Germany for females at birth and at aged 65 years...
 
