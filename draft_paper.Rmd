@@ -13,9 +13,12 @@ output:
 
 # Introduction 
 
-This notebook will compare annual changes in life expectancy at both birth ($e_0$) and at age 65 ($e_{65}$) from 1980 to 2019 (or the latest available year) in England and Wales, Scotland, France, Italy, Spains and Germany. Germany includes a 'Synthetic Germany' created from a weighted average of East and West German data for common years. The method for creating this 'Synthetic Germany' is covered in the methods section in brief and in Appendix X for more detail.
+Stalling of life expectancy improvements occurred in the UK from 2010 onwards. It was also seen in some other Western European countries. While the reason and severity of this is debated, some also contend the stalling of improvements seen is artefact following an unusual decade of improvement in 2000s (Murphy 2021).
 
-THIS LINE IS A TEST FOR LU EDITING RMD IN R STUDIO HAVING CLONED THE GITHUB FILE
+-[ ] Introduction to be written once methods/results discussed and decided on
+
+This notebook will compare annual changes in life expectancy at both birth ($e_0$) and at age 65 ($e_{65}$) from 1980 to 2019 (or the latest available year) in England and Wales, Scotland, France, Italy, Spains and Germany. Germany includes a 'Synthetic Germany' created from a weighted average of East and West German data for common years. The method for creating this 'Synthetic Germany' is covered in the methods section in brief and in Appendix X for more detail. In order to explore the hypothesis that the recent stalling in life expectancy, most marked in England and Wales, was an expected 'correction' after a decade of unusually fast life expectancy improvements, we have selected the years from 1980 onwards.
+
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(
@@ -38,7 +41,7 @@ The following countries are included in the comparison:
 
 - England & Wales (`GBRTENW`)
 - Scotland (`GBR_SCO`)
-- UK as a whole (`GBR_UK`)
+- UK as a whole (`GBR_UK`) #we gaven't included UK but can do
 - France (`FRANTP`)
 - Spain (`ESP`)
 - Italy (`ITA`)
@@ -48,8 +51,6 @@ The following countries are included in the comparison:
    - West Germany (`DEUTW`)
    - Simulated/Synthetic Germany
 
-In order to explore the hypothesis that the recent stallin in life expectancy, most marked in England and Wales, was an expected 'correction' after a decade of unusually fast life expectancy improvements, we have selected the years from 1980 onwards.
- 
 
 ```{r, echo=FALSE}
 # load packages
@@ -67,6 +68,8 @@ hmd_lt <- read_rds(here("data", "lifetables.rds"))
 ## Analysis 
 
 For each of these countries, and for males and females separately, we are interested in the annual changes in life expectancy at birth ($e_0$) and life expectancy at age 65 ($e_{65}$), from 1980 to the last available year for each country. In addition, we compare average life expectancy improvements over the 4 decades: 1980, 1990, 2000, and 2010.
+
+We then compared whether the average between the decades was significant, using a regression model. 
 
 ### Synthetic Germany 
 
@@ -238,14 +241,12 @@ country_code_lookup <-
 
 # Results
 
-## Descriptive Results /Starter Eyeballing
+## Descriptive Results 
 
 ### Life expectancy trends 
 
-The following figures show life expectancy at birth and at age 65 for selected nations from 1980 to the latest available year.
+The following figures show life expectancy at birth and at age 65 for selected nations from 1980 to the latest available year for males and females.
 
-
-Here it is at birth...
 
 
 ```{r, echo = FALSE, fig.cap = "Life Expectancy at birth"}
@@ -271,7 +272,6 @@ hmd_ex_selected_countries_with_synth %>%
 ```
 
 
-Here it is at age 65
 
 ```{r, echo = FALSE, fig.cap = "Life Expectancy at age 65"}
 hmd_ex_selected_countries_with_synth %>% 
@@ -294,12 +294,11 @@ hmd_ex_selected_countries_with_synth %>%
 
 - [ ] Some insightful comment about what's going on.
 
-Scotland looks pretty bad compared with the other countries. 
 
 
 ## Change in life expectancy in these nations 
 
-Next, we compare the annual change in life expectancy at birth and at aged 65 years for the 6 nations from 1980 to the latest available year, by sex.
+Next, we compare the annual change in life expectancy at birth and at aged 65 years for the nations from 1980 to the latest available year, by sex.
 
 ```{r}
 change_in_ex_selected_countries <- 
@@ -316,7 +315,7 @@ change_in_ex_selected_countries
 ### Changes in life expectancy at birth 
 
 - [ ] make smoother lines coloured by sex
-- [ ] use consistent colours for all graphs showing separate sex results
+- [X] use consistent colours for all graphs showing separate sex results
 
 
 ```{r, echo = FALSE, warning=FALSE, message = FALSE, fig.height=8, fig.width=8}
@@ -325,7 +324,7 @@ change_in_ex_selected_countries %>%
   left_join(country_code_lookup) %>% 
   mutate(country = factor(country, levels = c("England & Wales", "Scotland", "East Germany", "West Germany", "Germany", "Synthetic Germany", "Spain", "France", "Italy"))) %>% 
   filter(between(year, 1980, 2020)) %>% 
-  ggplot(aes(x = year, y = delta_ex)) + 
+  ggplot(aes(x = year, y = delta_ex, colour=sex)) + 
   geom_point(alpha = 0.2) + 
   stat_smooth() + 
   facet_grid(country~sex) + 
@@ -465,7 +464,9 @@ hmd_ex_selected_countries_with_synth %>%
 
 ```
 
-Are the differences by decade statistically significant? 
+####Are the differences by decade statistically significant? 
+To assess whether the changes by decade are statistically significant, we carried out [Jon please could you write a little more here?]
+We found the only significant change decade-on-decades was for East Germany for females at birth and at aged 65 years...
 
 
 ```{r}
