@@ -13,13 +13,12 @@ output:
 
 # Introduction 
 
-Stalling of life expectancy improvements occurred in the UK from 2010 onwards. It was also seen in some other Western European countries. While the reason and severity of this is debated, some also contend the stalling of improvements seen is artefact following an unusual decade of improvement in 2000s (Murphy 2021).
+Stalling of life expectancy improvements occurred in the UK from 2010 onwards. It was also seen in some other Western European countries. While the reason and severity of this is debated, some also contend the stalling of improvements seen is artefact following an unusual decade of improvement in 2000s (e.g. Murphy 2021).
 
 - [ ] Introduction to be written once methods/results discussed and decided on
 
 This notebook will compare annual changes in life expectancy at both birth ($e_0$) and at age 65 ($e_{65}$) from 1980 to 2019 (or the latest available year) in England and Wales, Scotland, France, Italy, Spains and Germany. Germany includes a 'Synthetic Germany' created from a weighted average of East and West German data for common years. The method for creating this 'Synthetic Germany' is covered in the methods section in brief and in Appendix X for more detail. In order to explore the hypothesis that the recent stalling in life expectancy, most marked in England and Wales, was an expected 'correction' after a decade of unusually fast life expectancy improvements, we have selected the years from 1980 onwards.
 
-This is a new test using R Studio on Lu's desktop in line 22
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(
@@ -301,7 +300,7 @@ hmd_ex_selected_countries_with_synth %>%
 
 Next, we compare the annual change in life expectancy at birth and at aged 65 years for the nations from 1980 to the latest available year, by sex.
 
-```{r}
+```{r, echo=FALSE}
 change_in_ex_selected_countries <- 
   hmd_ex_selected_countries_with_synth %>% 
     group_by(code, x, sex) %>% 
@@ -433,7 +432,9 @@ hmd_ex_selected_countries_with_synth %>%
 - [ ] Add further introduction 
 - [ ] Add statistical significance (though maybe this is a different analysis)
 
-```{r, tab.cap = "Source: HMD"}
+The table below shows average improvements by decade for England and Wales (standard error).
+
+```{r, echo=FALSE, tab.cap = "Source: HMD"}
 
 hmd_ex_selected_countries_with_synth %>% 
     filter(year >= 1979) %>% 
@@ -470,7 +471,7 @@ hmd_ex_selected_countries_with_synth %>%
 Are there significant differences in average rates of change in $e_x$ by decade? Another way of expressing this question is to ask whether knowing the decade in which an observation has been observed is informative as to what such values will be. This rephrased question was addressed by, for each starting age (0 or 65 years), sex and country, fitting two competing model specifications - $M_0$ and $M_A$ - and running an F test on the residuals of these two models. The Null model specification, $M_0$, regresses $\delta e_x$ (observed annual changes in $e_x$) against a single intercept term $\alpha$; put another way: $M_0$ assumes that all observations are drawn from a Normal distribution with a mean value of $\alpha$, and that this is consistent across all observed decades. The alternative model specification, $M_A$, also includes the $\alpha$ term, but also includes dummy variables to indicate which decade the realised value of $\delta e_0$ corresponds to. (Because one of the decades needs to be the reference category against which other decades are compared, there are one fewer decadal dummy variables than decades in the dataset for a given country, and the $\alpha$ parameter in $M_A$ estimates the mean change in $\delta e_0$ in the first decade, and so cannot be compared directly with the $\alpha$ parameter in $M_0$.) A P-value from the F test comparing $M_0$ and $M_A$ of less than 0.05 is taken to indicate that $M_A$ should be preferred to $M_0$, and so that there are systemic differences in average rates of improvement by decade for a given country, sex, and starting age. 
 
 
-We found the only significant change decade-on-decades was for East Germany for females at birth and at aged 65 years...
+We found the only significant change decade-on-decades was for East Germany for females at birth and at aged 65 years. This is consistent with existing literature in this area, showing the convergence of life expectancy for females in East and West Germany following reunification.
 
 
 ```{r}
@@ -566,8 +567,7 @@ summary(tmp$model_alt[[2]])
 
 # Discussion
 
-- **Limitations**: fewer years for comparison in 2010s; comparing different time periods will provide different results.
-- Add description of what this needs 
+- **Limitations**: fewer years for comparison in 2010s for some nations; comparing different time periods will provide different results e.g. New Labour years in E&W.
 
 # Appendix A: Construction of Synthetic Germany 
 
