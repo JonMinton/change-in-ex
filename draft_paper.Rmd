@@ -465,8 +465,11 @@ hmd_ex_selected_countries_with_synth %>%
 
 ```
 
-###Are the differences by decade statistically significant? 
-To assess whether the changes by decade are statistically significant, we carried out [Jon please could you write a little more here?]
+### Are the differences by decade statistically significant? 
+
+Are there significant differences in average rates of change in $e_x$ by decade? Another way of expressing this question is to ask whether knowing the decade in which an observation has been observed is informative as to what such values will be. This rephrased question was addressed by, for each starting age (0 or 65 years), sex and country, fitting two competing model specifications - $M_0$ and $M_A$ - and running an F test on the residuals of these two models. The Null model specification, $M_0$, regresses $\delta e_x$ (observed annual changes in $e_x$) against a single intercept term $\alpha$; put another way: $M_0$ assumes that all observations are drawn from a Normal distribution with a mean value of $\alpha$, and that this is consistent across all observed decades. The alternative model specification, $M_A$, also includes the $\alpha$ term, but also includes dummy variables to indicate which decade the realised value of $\delta e_0$ corresponds to. (Because one of the decades needs to be the reference category against which other decades are compared, there are one fewer decadal dummy variables than decades in the dataset for a given country, and the $\alpha$ parameter in $M_A$ estimates the mean change in $\delta e_0$ in the first decade, and so cannot be compared directly with the $\alpha$ parameter in $M_0$.) A P-value from the F test comparing $M_0$ and $M_A$ of less than 0.05 is taken to indicate that $M_A$ should be preferred to $M_0$, and so that there are systemic differences in average rates of improvement by decade for a given country, sex, and starting age. 
+
+
 We found the only significant change decade-on-decades was for East Germany for females at birth and at aged 65 years...
 
 
