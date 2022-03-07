@@ -585,6 +585,11 @@ We will start with a single country, starting age, and sex, and with manual sele
 
 
 ```{r}
+
+# Let's start with a single example population. (There are many different population subgroups, hence the 
+# benefit of being able to automate this later.) We're going to start with England & Wales, females, life 
+# expectancy at birth (x == 0)
+
 example_df <- 
   hmd_ex_selected_countries_with_synth %>% 
       filter(x == 0) %>% 
@@ -592,6 +597,7 @@ example_df <-
       filter(code == "GBRTENW") %>% 
       filter(year >= 1979)
 
+# Now we create the change in ex variable as that's the response variable in the model
 example_df <- 
   example_df %>% 
     arrange(year) %>% 
@@ -601,15 +607,24 @@ example_df <-
   # geom_hline(yintercept = 0) + 
   # stat_smooth()
 
+# The null model is really simple: just an intercept 
 model_null <- lm(delta_ex ~ 1, data = example_df)
 summary(model_null)
 # 
+
+# The code below shows how we can be even simpler, and force the regression model not to 
+# even have an intercept (i.e. have zero predictor variables)
+
 # model_nuller <- lm(delta_ex ~ 0, data = example_df)
 # summary(model_nuller)
-# 
+
+# And we can compare the intercept with the no intercept model as follows 
 # anova(model_nuller, model_null)
+# a statistically significant p value shows the intercept is definitely worth including in the 
+# model. Substantively that it's wrong to assume no improvement on average in ex over time since the 1980s
 
 
+# There are lots of possible alternative models, some examples of which are below:
 model_alt01 <- lm(delta_ex ~ year >= 1990, data = example_df)
 summary(model_alt01)
 
@@ -625,7 +640,18 @@ summary(model_alt04)
 model_alt05 <- lm(delta_ex ~ year >= 2011, data = example_df)
 summary(model_alt05)
 
+# each of these models allows an adjustment to the horizontal line after a given year has been reached. 
+# In the examples above some possible given years are 1990, 1995, 1997, 2008 and 2011. 
+# Each of these is a candidate value for tau. But we've not looked at all possible/plausible values of this. 
 
+# Hence, it would be good to automate further to search for each possible tau and see how the fit and model 
+# results change. 
+
+# We'll start to automate by building a function which creates T_param given tau, and runs and returns the model
+# with this type of T_param
+# (If tau is 1990, then T_param is equivalent to model_alt01 above; if tau were 1995, then it's equivalent to model_alt02, and so on. The only difference is that the new coefficient created has the same name, T_param, 
+# whereas in the above it would have a different name each time, because the coefficient is being 
+# created in situ, within the formula specification, rather than by pre-processing the dataframe)
 run_alt_with_given_tau <- function(tau, df){
   df <- 
     df %>% 
@@ -637,29 +663,48 @@ run_alt_with_given_tau <- function(tau, df){
   lm(delta_ex ~ T_param, data  = df)
 }
 
+# We can now run the above function, which creates a model, for a wide range of possible tau values
+# This is the sequence listed and named tau_candidate, which is every whole number from 
+# 1982 to 2015
 
+# For each of these models, we can then get a measure of model fit. We're going to use AIC, though 
+# could have used other measures. With AIC (and with BIC, and RMSE etc) better fit is indicated with 
+# a lower value
 grid_search_df <- tibble(
-  tau_candidate = 1982:2015
+  tau_candidate = 1982:2015 # column of candidate values
 ) %>% 
   mutate(
-    model_alt = map(tau_candidate, run_alt_with_given_tau, df = example_df)
+    model_alt = map(tau_candidate, run_alt_with_given_tau, df = example_df) # run the model with the value of tau in tau_candidate
   ) %>% 
   mutate(
-    bic = map_dbl(model_alt, BIC)
+    aic = map_dbl(model_alt, AIC)
   )
 
+
+# Now we can see which proposed tau results in what fit value (AIC), initially just by graphing it.
 grid_search_df %>% 
-  ggplot(aes(tau_candidate, bic)) + 
+  ggplot(aes(tau_candidate, aic)) + 
   geom_point()
 
+# So, in the above we found 2012 as tau minimised AIC. So, that's the best possible alternative model. 
+# Let's run and label it as such
 best_alt_model <- example_df %>% 
   mutate( T_param = ifelse(year < 2012, FALSE, TRUE)) %>% 
   lm(delta_ex ~ T_param, data = .)
 
-null_alt_model <- example_df %>% 
+# Now we want to create the null model to compare it against (which just has an intercept term alone)
+null_model <- example_df %>% 
   lm(delta_ex ~ 1, data = .)
 
-anova(null_alt_model, best_alt_model)
+# And finally, we want to compare the best_alt_model against the null model using an F test
+anova(null_model, best_alt_model)
+# We are interested in the P value here. If it's statistically significant then the best_alt_model does better
+# (Is worth its additional complexity in terms of how much it makes the model fit) than the null model,
+# So... for females, from birth, in England & Wales, there's evidence that there WAS a significant change in 
+# average life expectancy improvement from 2012 onwards. (i.e. two years after austerity was introduced)
+
+
+# We can manually repeat the same exercise for some additional subsets of the data (population, gender, starting age combinations). The below shows the same for males in England & Wales, from birth.
 
 
 example_df <- 
@@ -693,11 +738,15 @@ best_alt_model <- example_df %>%
   mutate( T_param = ifelse(year < 2013, FALSE, TRUE)) %>% 
   lm(delta_ex ~ T_param, data = .)
 
-null_alt_model <- example_df %>% 
+null_model <- example_df %>% 
   lm(delta_ex ~ 1, data = .)
 
-anova(null_alt_model, best_alt_model)
+anova(null_model, best_alt_model)
 
+# This time 2013 is a slightly better candidate than 2012, hence 2013 being used in best_alt_model not 2012. 
+
+
+# Another example: France, males
 ###
 example_df <- 
   hmd_ex_selected_countries_with_synth %>% 
@@ -727,14 +776,21 @@ grid_search_df %>%
 
 
 best_alt_model <- example_df %>% 
-  mutate( T_param = ifelse(year < 2013, FALSE, TRUE)) %>% 
+  mutate( T_param = ifelse(year < 2012, FALSE, TRUE)) %>% 
   lm(delta_ex ~ T_param, data = .)
 
-null_alt_model <- example_df %>% 
+
+summary(best_alt_model)
+
+null_model <- example_df %>% 
   lm(delta_ex ~ 1, data = .)
+summary(null_model)
+
 
 anova(null_alt_model, best_alt_model)
 
+# Here 2015 has the lowest value, but this might be an artefact of the data period covered. 
+# We can also see that 2012 is the next best candidate.
 ```
 
 
