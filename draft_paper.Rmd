@@ -3,8 +3,8 @@ title: "How do changes in ex vary between countries?"
 author: "Jon Minton, Lucinda Hiam"
 date: "22/02/2022"
 output:
-  word_document: default
   html_document: default
+  word_document: default
 ---
 
 # To dos
@@ -474,7 +474,7 @@ Are there significant differences in average rates of change in $e_x$ by decade?
 We found the only significant change decade-on-decades was for East Germany for females at birth and at aged 65 years. This is consistent with existing literature in this area, showing the convergence of life expectancy for females in East and West Germany following reunification.
 
 
-```{r}
+```{r, cache=TRUE}
 
 
 dta_for_decade_comparison <- 
@@ -563,6 +563,179 @@ summary(tmp$model_alt[[2]])
   
 ```
 
+### Joinpoint/Segmented regression approach 
+
+Though there may be systemic differences in average changes in life expectancy over time, such differences may not be patterned by decade, and so the above model specification may not have been appropriate to detect any such changes. Instead of looking for systemic differences by decade, we can instead look at whether there are any systemic and detectable 'breaks' in the trends over time. If our data were life expectancy over time, this could be achieved through joinpoint analysis, in which the slope is allowed to change over time. As instead are data are annual changes in life expectancy, we are interested in detecting changes in intercept over time. If we define our Null (no change) model as follows: 
+
+$$
+M_0 : y(t) = \alpha + e
+$$
+Where $e \backsim N(0, \sigma^2)$. i.e. all observations $y$ are draws from $N(\alpha, \sigma^2)$. The alternative model specification against which this is compared is then: 
+
+$$
+M_A : y(t) = \alpha_0 + \beta_1 T(t) + e 
+$$
+Where $T(t)$ is defined as $0$ where $t \lt \tau$ and $1$ where $t \geq \tau$. ($\alpha_0$ is used in $M_A$ to indicate that this parameter is not directly comparable with $\alpha$ in $M_0$).
+
+This specification shows that there is an additional parameter $\tau$ to be determined in order to produce $M_A$. This $\tau$ parameter is the breakpoint in the series. The selection of $\tau$ will be determined by numeric optimisation, by selecting the value of $\tau$ that minimised AIC. 
+
+Once the best possible $M_A$, using the best value of $\tau$, is selected, $M_A$ will be compared with $M_0$ using an F-test, allowing us to determine whether there is convincing evidence of any specific break in the data.  
+
+We will start with a single country, starting age, and sex, and with manual selection of $\tau$, then generalise and automate further. 
+
+
+```{r}
+example_df <- 
+  hmd_ex_selected_countries_with_synth %>% 
+      filter(x == 0) %>% 
+      filter(sex == "female") %>% 
+      filter(code == "GBRTENW") %>% 
+      filter(year >= 1979)
+
+example_df <- 
+  example_df %>% 
+    arrange(year) %>% 
+    mutate(delta_ex = ex - lag(ex)) # %>% 
+  # ggplot(aes(x = year, y = delta_ex)) + geom_point() + 
+  # geom_line() +
+  # geom_hline(yintercept = 0) + 
+  # stat_smooth()
+
+model_null <- lm(delta_ex ~ 1, data = example_df)
+summary(model_null)
+# 
+# model_nuller <- lm(delta_ex ~ 0, data = example_df)
+# summary(model_nuller)
+# 
+# anova(model_nuller, model_null)
+
+
+model_alt01 <- lm(delta_ex ~ year >= 1990, data = example_df)
+summary(model_alt01)
+
+model_alt02 <- lm(delta_ex ~ year >= 1995, data = example_df)
+summary(model_alt02)
+
+model_alt03 <- lm(delta_ex ~ year >= 1997, data = example_df)
+summary(model_alt03)
+
+model_alt04 <- lm(delta_ex ~ year >= 2008, data = example_df)
+summary(model_alt04)
+
+model_alt05 <- lm(delta_ex ~ year >= 2011, data = example_df)
+summary(model_alt05)
+
+
+run_alt_with_given_tau <- function(tau, df){
+  df <- 
+    df %>% 
+      filter(!is.na(delta_ex)) %>% 
+      mutate(
+        T_param = ifelse(year < tau, FALSE, TRUE)
+      )
+  
+  lm(delta_ex ~ T_param, data  = df)
+}
+
+
+grid_search_df <- tibble(
+  tau_candidate = 1982:2015
+) %>% 
+  mutate(
+    model_alt = map(tau_candidate, run_alt_with_given_tau, df = example_df)
+  ) %>% 
+  mutate(
+    bic = map_dbl(model_alt, BIC)
+  )
+
+grid_search_df %>% 
+  ggplot(aes(tau_candidate, bic)) + 
+  geom_point()
+
+best_alt_model <- example_df %>% 
+  mutate( T_param = ifelse(year < 2012, FALSE, TRUE)) %>% 
+  lm(delta_ex ~ T_param, data = .)
+
+null_alt_model <- example_df %>% 
+  lm(delta_ex ~ 1, data = .)
+
+anova(null_alt_model, best_alt_model)
+
+
+example_df <- 
+  hmd_ex_selected_countries_with_synth %>% 
+      filter(x == 0) %>% 
+      filter(sex == "male") %>% 
+      filter(code == "GBRTENW") %>% 
+      filter(year >= 1979)
+
+example_df <- 
+  example_df %>% 
+    arrange(year) %>% 
+    mutate(delta_ex = ex - lag(ex))
+
+grid_search_df <- tibble(
+  tau_candidate = 1982:2015
+) %>% 
+  mutate(
+    model_alt = map(tau_candidate, run_alt_with_given_tau, df = example_df)
+  ) %>% 
+  mutate(
+    aic = map_dbl(model_alt, AIC)
+  )
+
+grid_search_df %>% 
+  ggplot(aes(tau_candidate, aic)) + 
+  geom_point()
+
+
+best_alt_model <- example_df %>% 
+  mutate( T_param = ifelse(year < 2013, FALSE, TRUE)) %>% 
+  lm(delta_ex ~ T_param, data = .)
+
+null_alt_model <- example_df %>% 
+  lm(delta_ex ~ 1, data = .)
+
+anova(null_alt_model, best_alt_model)
+
+###
+example_df <- 
+  hmd_ex_selected_countries_with_synth %>% 
+      filter(x == 0) %>% 
+      filter(sex == "male") %>% 
+      filter(code == "FRATNP") %>% 
+      filter(year >= 1979)
+
+example_df <- 
+  example_df %>% 
+    arrange(year) %>% 
+    mutate(delta_ex = ex - lag(ex))
+
+grid_search_df <- tibble(
+  tau_candidate = 1982:2015
+) %>% 
+  mutate(
+    model_alt = map(tau_candidate, run_alt_with_given_tau, df = example_df)
+  ) %>% 
+  mutate(
+    aic = map_dbl(model_alt, AIC)
+  )
+
+grid_search_df %>% 
+  ggplot(aes(tau_candidate, aic)) + 
+  geom_point()
+
+
+best_alt_model <- example_df %>% 
+  mutate( T_param = ifelse(year < 2013, FALSE, TRUE)) %>% 
+  lm(delta_ex ~ T_param, data = .)
+
+null_alt_model <- example_df %>% 
+  lm(delta_ex ~ 1, data = .)
+
+anova(null_alt_model, best_alt_model)
+
+```
 
 
 # Discussion
