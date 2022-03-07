@@ -791,6 +791,107 @@ anova(null_alt_model, best_alt_model)
 
 # Here 2015 has the lowest value, but this might be an artefact of the data period covered. 
 # We can also see that 2012 is the next best candidate.
+
+## Generalising and automating. 
+
+# We've manually found the best break points, and compared the best alt with the standard null model 
+# for each of these. What we should do now is standardise the process so it 'works' automatically 
+# for each of the population subgroups. 
+
+# As with creating synthetic germany, the grid/line search approach shown above should work, 
+# but I'm going to try to use optim nonetheless for pedagogic and perfectionist(/masochistic) reasons
+
+# optim uses some starting conditions (and sometimes other conditions) to use an algorithm 
+# to find an input or group of inputs that give the best possible output from a function that takes the 
+# input/inputs. 
+
+# best can either mean the lowest or the highest achievable value. When trying to minimise errors
+# (as with model specifications) that usually means trying to get the minimum value. 
+
+# So, the input to the function will be the tau value. 
+# The tau value range should have some reasonable limits. These can be specified 
+# for some kinds of algorithm optim uses.
+# the limits should also be determined by the data. I don't think the tau should be 
+# set at the first or last observed year, as it doesn't make sense to speak of a 'trend' 
+# from a single observation. This thinking generalises to at least two observations too. 
+# So, that implies there should be a 'buffer' within which the optim function will look 
+# for possible tau values. This should be an adjustable parameter for passing for 
+# optim, but not the parameter for optim to determine. 
+
+# There's a special type of optim algorithm for bounded optimisation like this.
+# 'L-BFGS-B'. This can be selected using the method argument, and also 
+# requires the lower and upper arguments be specified, for the lower 
+# and upper values to search within respectively. 
+
+# so, we need to write a function a bit like the following
+
+get_best_tau_from_optim <- function(df, buffer = 2, what = c("tau", "optim")){
+  # We can put in some data validation checks too 
+  
+  what <- match.arg(what)
+  
+  years <- df$year 
+  tau_lower <- min(years) + buffer # the lower bound 
+  tau_upper <- max(years) - buffer # the upper bound
+  tau_start <- (tau_upper + tau_lower) / 2 # start just in the middle 
+  # (This shouldn't matter if the algorithm is robust) 
+  
+  get_result_from_model <- function(par, df, what = c("AIC", "BIC", "model")){
+    # Again, can carry out more validation checks 
+    what <- match.arg(what)
+    
+    tau <- par[["tau"]] # This is how parameters are packed up by optim
+
+    model <-
+      df %>% 
+        arrange(year) %>% 
+        mutate(delta_ex = ex - lag(ex)) %>% 
+        filter(!is.na(delta_ex)) %>% 
+        mutate(T_param = ifelse(year < tau, FALSE, TRUE)) %>% 
+        lm(delta_ex ~ T_param, data = .)
+
+    if (what == "model") {return(model)      }
+    if (what == "BIC")   {return(BIC(model)) }
+    if (what == "AIC")   {return(AIC(model)) }
+    
+    # NULL should never be returned! If it has something's gone wrong!
+    NULL
+  }
+  
+  optim_obj <- 
+    optim(
+      par = list(tau = tau_start), 
+      fn = get_result_from_model, 
+      method = "L-BFGS-B",
+      lower = tau_lower,
+      upper = tau_upper,
+      df = df
+    )
+
+  # Need to make the result dependent on the what argument
+  
+  if (what == "tau") {return(optim_obj[["par"]])}
+  else if (what == "optim"){ return(optim_obj) }
+  
+  # Again, the following should never be triggered
+  NULL
+}
+
+# Let's see if this now works in the functional programming context, using 
+# nest and tibble elements 
+
+hmd_ex_selected_countries_with_synth %>%
+  filter(year >= 1979) %>% 
+  group_by(code, x, sex) %>% 
+  nest() %>% 
+  mutate(
+    best_tau = map_dbl(data, get_best_tau_from_optim)
+  )
+
+# I think this is getting stuck on local optima, so instead maybe 
+# the more exhaustive search should be used after all! 
+
+
 ```
 
 
