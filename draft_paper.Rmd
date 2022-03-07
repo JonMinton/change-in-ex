@@ -787,7 +787,7 @@ null_model <- example_df %>%
 summary(null_model)
 
 
-anova(null_alt_model, best_alt_model)
+anova(null_model, best_alt_model)
 
 # Here 2015 has the lowest value, but this might be an artefact of the data period covered. 
 # We can also see that 2012 is the next best candidate.
