@@ -982,7 +982,6 @@ compare_best_breakmodel_with_null <-
       )
     )
 
-
 compare_best_breakmodel_with_null %>% 
   mutate(
     aic_alt  = map_dbl(model_alt, AIC),
@@ -990,6 +989,13 @@ compare_best_breakmodel_with_null %>%
   ) %>% 
   mutate(
     alt_preferred = map2_lgl(aic_alt, aic_null, ~ifelse(.x < .y, TRUE, FALSE))
+  ) %>% 
+  mutate(
+    anova_results = map2(model_alt, model_null, anova)
+  ) %>% 
+  mutate(
+    ftest_pval = map_dbl(anova_results, ~.[2,6]),
+    stat_sig_preference = ftest_pval < 0.05
   )
 
 ```
