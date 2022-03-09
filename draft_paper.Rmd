@@ -982,7 +982,7 @@ compare_best_breakmodel_with_null <-
       )
     )
 
-compare_best_breakmodel_with_null %>% 
+tmp <- compare_best_breakmodel_with_null %>% 
   mutate(
     aic_alt  = map_dbl(model_alt, AIC),
     aic_null = map_dbl(model_null, AIC)
@@ -1000,6 +1000,20 @@ compare_best_breakmodel_with_null %>%
 
 ```
 
+Next, we display a table with those countries where the breakpoint shows as statistically significant compared to the null, where best_tau is the year.
+
+```{r}
+stat_sig_table <- select(tmp, code, x, sex, best_tau, stat_sig_preference) %>% filter(stat_sig_preference==TRUE)
+
+rename(stat_sig_table, age = x, country = code)
+view(stat_sig_table)
+
+#using flextable
+myft <- flextable(stat_sig_table)
+myft
+myft <- theme_vanilla(myft)
+myft
+```
 
 # Discussion
 
