@@ -1131,6 +1131,37 @@ myft
 myft <- theme_vanilla(myft)
 myft
 ```
+Next, let's look closer at France, Scotland, and E&Ws life expectancy at birth for males.
+Jon: can we somehow include these 3 in the below to produce a graph? I tried adding into the first chunk but it does not run the later parts.
+
+```{r}
+example_df <- 
+  hmd_ex_selected_countries_with_synth %>% 
+      filter(x == 0) %>% 
+      filter(sex == "male") %>% 
+      filter(code == "FRATNP") %>% 
+      filter(year >= 1979)
+
+example_df <- 
+  example_df %>% 
+    arrange(year) %>% 
+    mutate(delta_ex = ex - lag(ex))
+
+grid_search_df <- tibble(
+  tau_candidate = 1982:2015
+) %>% 
+  mutate(
+    model_alt = map(tau_candidate, run_alt_with_given_tau, df = example_df)
+  ) %>% 
+  mutate(
+    aic = map_dbl(model_alt, AIC)
+  )
+
+grid_search_df %>% 
+  ggplot(aes(tau_candidate, aic)) + 
+  geom_point()
+```
+
 
 # Discussion
 
