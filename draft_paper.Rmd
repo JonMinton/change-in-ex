@@ -998,6 +998,123 @@ compare_best_breakmodel_with_null %>%
     stat_sig_preference = ftest_pval < 0.05
   )
 
+# Now let's finish with the most unneccesarily complicated variant: using a different algorithm in 
+# optim which will allow local minima to be escaped. This is the simulated annealing method 
+# (method = "SANN") which is based on physics models. Unfortunately this is not a bounded algoritm,
+# i.e. does not take values within limits, so instead the parameter passed to it has to be 
+# converted and deconverted from a bounded range using a link function. 
+# This can be done with a modification of the sigmoid function, which shifts the transformed 
+# value from the range 0-1 to the range lower_tau-upper_tau. 
+
+# Let's build up this function as follows: 
+
+# sigmoid_shift <- function(x, lower = 0, upper = 1){
+#   (upper - lower) / (1 + exp(-x)) + lower
+# }
+# # 
+# curve(sigmoid_shift, -3, 3) # basic sigmoid 
+# 
+# sigmoid_shift2 <- function(x){
+#   sigmoid_shift(x = x, lower = 1981, upper = 2015)
+# }
+# 
+# curve(sigmoid_shift2, -3, 3)
+
+# So this will work as a transformation from an unbounded space (x) to a 
+# bounded space (f(x))
+
+# We'll also need to reverse the operation 
+
+# # After a bit of pen-and-paper algebra...
+# sigmoid_unshift <- function(z, lower = 0, upper = 1){
+#   -log((upper - lower) / (z - lower) -1)
+# }
+# 
+# Let's double check...
+
+#  
+# sigmoid_shift(-4, lower = 1982, upper = 2015) %>% 
+#   sigmoid_unshift(lower = 1982, upper = 2015)
+# 
+# 
+# 
+# get_best_tau_from_optim_sann <- function(df, buffer = 2, what = c("tau", "tau_z", "optim")){
+#   # We can put in some data validation checks too 
+#   sigmoid_shift <- function(x, lower = 0, upper = 1){
+#     (upper - lower) / (1 + exp(-x)) + lower
+#   }
+#  
+#   sigmoid_unshift <- function(z, lower = 0, upper = 1){
+#   -log((upper - lower) / (z - lower) -1)
+#   } 
+#   
+#   
+#   what <- match.arg(what)
+#   
+#   years <- df$year 
+#   tau_lower <- min(years) + buffer # the lower bound 
+#   tau_upper <- max(years) - buffer # the upper bound
+#   # tau_start <- (tau_upper + tau_lower) / 2 # start just in the middle 
+#   # (This shouldn't matter if the algorithm is robust) 
+#   
+#   get_result_from_model <- function(par, df, what = c("AIC", "BIC", "model")){
+#     # Again, can carry out more validation checks 
+#     what <- match.arg(what)
+#     
+#     tau_z <- par[["tau_z"]] # This is how parameters are packed up by optim
+#     tau   <- sigmoid_shift(tau_z, lower = tau_lower, upper = tau_upper)
+#     
+#     model <-
+#       df %>% 
+#         arrange(year) %>% 
+#         mutate(delta_ex = ex - lag(ex)) %>% 
+#         filter(!is.na(delta_ex)) %>% 
+#         mutate(T_param = ifelse(year < tau, FALSE, TRUE)) %>% 
+#         lm(delta_ex ~ T_param, data = .)
+# 
+#     if (what == "model") {return(model)      }
+#     if (what == "BIC")   {return(BIC(model)) }
+#     if (what == "AIC")   {return(AIC(model)) }
+#     
+#     # NULL should never be returned! If it has something's gone wrong!
+#     NULL
+#   }
+# 
+#   optim_obj <- 
+#     optim(
+#       par = list(tau_z = 0), 
+#       fn = get_result_from_model, 
+#       method = "SANN",
+#       df = df
+#     )
+# 
+#   # Need to make the result dependent on the what argument
+#   
+#   if (what == "tau") {return(sigmoid_shift(optim_obj[["par"]], lower = tau_lower, upper = tau_upper))}
+#   if (what == "tau_z") {return(optim_obj[["par"]])}  
+#   else if (what == "optim"){ return(optim_obj) }
+#   
+#   # Again, the following should never be triggered
+#   NULL
+# }
+# 
+# 
+# sann_estimates <- 
+#   hmd_ex_selected_countries_with_synth %>%
+#     filter(year >= 1979) %>% 
+#     group_by(code, x, sex) %>% 
+#     nest() %>% 
+#     mutate(
+#       best_tau = map_dbl(data, get_best_tau_from_optim_sann)
+#     )
+# 
+# # This takes ABSOLUTELY AGES, and really is the sledgehammer-to-crack
+# # -a-nut approach to use only as a last resort. #
+# # However if you ever do have a complex and non-finite fitness 
+# # surface to try to optimise, and it also requires searching 
+# # over a bounded area, then this is how you can do it! 
+
+
 ```
 
 
