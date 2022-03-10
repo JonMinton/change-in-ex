@@ -1131,8 +1131,6 @@ myft
 myft <- theme_vanilla(myft)
 myft
 ```
-Next, let's look closer at France, Scotland, and E&Ws life expectancy at birth for males.
-Jon: can we somehow include these 3 in the below to produce a graph? I tried adding into the first chunk but it does not run the later parts.
 
 ```{r}
 example_df <- 
