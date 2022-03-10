@@ -635,7 +635,7 @@ f_e65_ENW <-
       filter(code == "GBRTENW") %>% 
       filter(year >= 1979)
 
-# Now we create the change in ex variable as that's the response variable in the model
+# Now we create the change in ex variable 
   f_e65_ENW <- f_e65_ENW %>% 
     arrange(year) %>% 
     mutate(delta_ex = ex - lag(ex)) %>% 
@@ -686,6 +686,36 @@ m_e65_ENW + labs(y = "Annual change in e65", title = "England and Wales", subtit
 # #put side by side, needs package gridExtra then uses grid.arrange(plot1, plot2, ncol=2)
 # grid.arrange(f_e0_ENW, m_e0_ENW, f_e65_ENW, m_e65_ENW, ncol=2, nrow=2)
 # #grid.arrange(f_e65_ENW, m_e65_ENW, ncol=2, nrow=2)
+
+#   hmd_ex_selected_countries_with_synth %>% 
+#       filter(sex == "male") %>% 
+#       filter(code %in% c("GBRTENW", "GBR_SCO")) %>% 
+#     group_by(code, x) %>% arrange(year) %>% 
+#       mutate(delta_ex = ex - lag(ex)) %>%
+#     ungroup %>% 
+#     filter(year >= 1979) %>% 
+#     ggplot(aes(x = year, y = delta_ex)) + geom_point() + 
+#    geom_line() +
+#    geom_hline(yintercept = 0) + 
+#    stat_smooth(colour = "aquamarine4")+
+# facet_grid(x ~ code)
+
+  ex_ENW <- hmd_ex_selected_countries_with_synth %>%
+      filter(sex %in% c("female", "male")) %>%
+      filter(code == "GBRTENW") %>%
+    group_by(sex, x) %>% arrange(year) %>%
+      mutate(delta_ex = ex - lag(ex)) %>%
+    ungroup %>%
+    filter(year >= 1979) %>%
+    ggplot(aes(x = year, y = delta_ex)) + geom_point() +
+   geom_line() +
+   geom_hline(yintercept = 0) +
+    stat_smooth(mapping = aes(colour = sex)) +
+       facet_grid(x ~ sex) 
+  
+  ex_ENW + labs(x = "Year", y = "Annual change in life expectancy", title = "England and Wales", subtitle = "Life expectancy changes at birth (0) and aged 65 (65) by sex", caption = "Source: Human Mortality Database") 
+   
+   
 
 ```
 
@@ -762,6 +792,21 @@ f_e0_SCO + labs(y = "Annual change in e0", title = "Scotland", subtitle = "Life 
  m_e0_SCO + labs(y = "Annual change in e0", title = "Scotland", subtitle = "Life expectancy changes at birth for males", caption = "Source: Human Mortality Database")
  f_e65_SCO + labs(y = "Annual change in e65", title = "Scotland", subtitle = "Life expectancy changes at aged 65 for females", caption = "Source: Human Mortality Database")
  m_e65_SCO + labs(y = "Annual change in e65", title = "Scotland", subtitle = "Life expectancy changes at aged 65 for males", caption = "Source: Human Mortality Database")
+ 
+ ex_SCO <- hmd_ex_selected_countries_with_synth %>%
+      filter(sex %in% c("female", "male")) %>%
+      filter(code == "GBR_SCO") %>%
+    group_by(sex, x) %>% arrange(year) %>%
+      mutate(delta_ex = ex - lag(ex)) %>%
+    ungroup %>%
+    filter(year >= 1979) %>%
+    ggplot(aes(x = year, y = delta_ex)) + geom_point() +
+   geom_line() +
+   geom_hline(yintercept = 0) +
+    stat_smooth(mapping = aes(colour = sex)) +
+       facet_grid(x ~ sex) 
+  
+  ex_ENW + labs(x = "Year", y = "Annual change in life expectancy", title = "Scotland", subtitle = "Life expectancy changes at birth (0) and aged 65 (65) by sex", caption = "Source: Human Mortality Database")
 ```
 
 ### France
@@ -838,6 +883,21 @@ f_e0_FRA + labs(y = "Annual change in e0", title = "France", subtitle = "Life ex
  m_e0_FRA + labs(y = "Annual change in e0", title = "France", subtitle = "Life expectancy changes at birth for males", caption = "Source: Human Mortality Database")
  f_e65_FRA + labs(y = "Annual change in e65", title = "France", subtitle = "Life expectancy changes at aged 65 for females", caption = "Source: Human Mortality Database")
  m_e65_FRA + labs(y = "Annual change in e65", title = "France", subtitle = "Life expectancy changes at aged 65 for males", caption = "Source: Human Mortality Database")
+ 
+ ex_FRA <- hmd_ex_selected_countries_with_synth %>%
+      filter(sex %in% c("female", "male")) %>%
+      filter(code == "FRATNP") %>%
+    group_by(sex, x) %>% arrange(year) %>%
+      mutate(delta_ex = ex - lag(ex)) %>%
+    ungroup %>%
+    filter(year >= 1979) %>%
+    ggplot(aes(x = year, y = delta_ex)) + geom_point() +
+   geom_line() +
+   geom_hline(yintercept = 0) +
+    stat_smooth(mapping = aes(colour = sex)) +
+       facet_grid(x ~ sex) 
+  
+  ex_ENW + labs(x = "Year", y = "Annual change in life expectancy", title = "France", subtitle = "Life expectancy changes at birth (0) and aged 65 (65) by sex", caption = "Source: Human Mortality Database")
 ```
 
 ### Spain
@@ -914,6 +974,21 @@ f_e0_ESP + labs(y = "Annual change in e0", title = "Spain", subtitle = "Life exp
  m_e0_ESP + labs(y = "Annual change in e0", title = "Spain", subtitle = "Life expectancy changes at birth for males", caption = "Source: Human Mortality Database")
  f_e65_ESP + labs(y = "Annual change in e65", title = "Spain", subtitle = "Life expectancy changes at aged 65 for females", caption = "Source: Human Mortality Database")
  m_e65_ESP + labs(y = "Annual change in e65", title = "Spain", subtitle = "Life expectancy changes at aged 65 for males", caption = "Source: Human Mortality Database")
+ 
+ ex_ESP <- hmd_ex_selected_countries_with_synth %>%
+      filter(sex %in% c("female", "male")) %>%
+      filter(code == "ESP") %>%
+    group_by(sex, x) %>% arrange(year) %>%
+      mutate(delta_ex = ex - lag(ex)) %>%
+    ungroup %>%
+    filter(year >= 1979) %>%
+    ggplot(aes(x = year, y = delta_ex)) + geom_point() +
+   geom_line() +
+   geom_hline(yintercept = 0) +
+    stat_smooth(mapping = aes(colour = sex)) +
+       facet_grid(x ~ sex) 
+  
+  ex_ENW + labs(x = "Year", y = "Annual change in life expectancy", title = "Spain", subtitle = "Life expectancy changes at birth (0) and aged 65 (65) by sex", caption = "Source: Human Mortality Database")
 ```
 
 ### Italy
@@ -992,6 +1067,21 @@ f_e0_ITA + labs(y = "Annual change in e0", title = "Italy", subtitle = "Life exp
  m_e0_ITA + labs(y = "Annual change in e0", title = "Italy", subtitle = "Life expectancy changes at birth for males", caption = "Source: Human Mortality Database")
  f_e65_ITA + labs(y = "Annual change in e65", title = "Italy", subtitle = "Life expectancy changes at aged 65 for females", caption = "Source: Human Mortality Database")
  m_e65_ITA + labs(y = "Annual change in e65", title = "Italy", subtitle = "Life expectancy changes at aged 65 for males", caption = "Source: Human Mortality Database")
+ 
+ ex_ITA <- hmd_ex_selected_countries_with_synth %>%
+      filter(sex %in% c("female", "male")) %>%
+      filter(code == "ITA") %>%
+    group_by(sex, x) %>% arrange(year) %>%
+      mutate(delta_ex = ex - lag(ex)) %>%
+    ungroup %>%
+    filter(year >= 1979) %>%
+    ggplot(aes(x = year, y = delta_ex)) + geom_point() +
+   geom_line() +
+   geom_hline(yintercept = 0) +
+    stat_smooth(mapping = aes(colour = sex)) +
+       facet_grid(x ~ sex) 
+  
+  ex_ENW + labs(x = "Year", y = "Annual change in life expectancy", title = "Italy", subtitle = "Life expectancy changes at birth (0) and aged 65 (65) by sex", caption = "Source: Human Mortality Database")
 ```
 
 ### Germany: Synthetic
@@ -1068,6 +1158,22 @@ f_e0_DEUTS + labs(y = "Annual change in e0", title = "Germany: Synthetic", subti
  m_e0_DEUTS + labs(y = "Annual change in e0", title = "Germany: Synthetic", subtitle = "Life expectancy changes at birth for males", caption = "Source: Human Mortality Database")
  f_e65_DEUTS + labs(y = "Annual change in e65", title = "Germany: Synthetic", subtitle = "Life expectancy changes at aged 65 for females", caption = "Source: Human Mortality Database")
  m_e65_DEUTS + labs(y = "Annual change in e65", title = "Germany: Synthetic", subtitle = "Life expectancy changes at aged 65 for males", caption = "Source: Human Mortality Database")
+ 
+ #Grid
+ ex_DEUTSYNTH <- hmd_ex_selected_countries_with_synth %>%
+      filter(sex %in% c("female", "male")) %>%
+      filter(code == "DEUTHSYNTH") %>%
+    group_by(sex, x) %>% arrange(year) %>%
+      mutate(delta_ex = ex - lag(ex)) %>%
+    ungroup %>%
+    filter(year >= 1979) %>%
+    ggplot(aes(x = year, y = delta_ex)) + geom_point() +
+   geom_line() +
+   geom_hline(yintercept = 0) +
+    stat_smooth(mapping = aes(colour = sex)) +
+       facet_grid(x ~ sex) 
+  
+  ex_ENW + labs(x = "Year", y = "Annual change in life expectancy", title = "Germany: Synthetic", subtitle = "Life expectancy changes at birth (0) and aged 65 (65) by sex", caption = "Source: Human Mortality Database")
 ```
 
 ### Germany: East
@@ -1144,6 +1250,21 @@ f_e0_DEUTE + labs(y = "Annual change in e0", title = "Germany: East", subtitle =
  m_e0_DEUTE + labs(y = "Annual change in e0", title = "Germany: East", subtitle = "Life expectancy changes at birth for males", caption = "Source: Human Mortality Database")
  f_e65_DEUTE + labs(y = "Annual change in e65", title = "Germany: East", subtitle = "Life expectancy changes at aged 65 for females", caption = "Source: Human Mortality Database")
  m_e65_DEUTE + labs(y = "Annual change in e65", title = "Germany: East", subtitle = "Life expectancy changes at aged 65 for males", caption = "Source: Human Mortality Database")
+ 
+ ex_DEUTE <- hmd_ex_selected_countries_with_synth %>%
+      filter(sex %in% c("female", "male")) %>%
+      filter(code == "DEUTE") %>%
+    group_by(sex, x) %>% arrange(year) %>%
+      mutate(delta_ex = ex - lag(ex)) %>%
+    ungroup %>%
+    filter(year >= 1979) %>%
+    ggplot(aes(x = year, y = delta_ex)) + geom_point() +
+   geom_line() +
+   geom_hline(yintercept = 0) +
+    stat_smooth(mapping = aes(colour = sex)) +
+       facet_grid(x ~ sex) 
+  
+  ex_ENW + labs(x = "Year", y = "Annual change in life expectancy", title = "Germany: East", subtitle = "Life expectancy changes at birth (0) and aged 65 (65) by sex", caption = "Source: Human Mortality Database")
 ```
 
 ### Germany: West
@@ -1220,6 +1341,21 @@ f_e0_DEUTW + labs(y = "Annual change in e0", title = "Germany: West", subtitle =
  m_e0_DEUTW + labs(y = "Annual change in e0", title = "Germany: West", subtitle = "Life expectancy changes at birth for males", caption = "Source: Human Mortality Database")
  f_e65_DEUTW + labs(y = "Annual change in e65", title = "Germany: West", subtitle = "Life expectancy changes at aged 65 for females", caption = "Source: Human Mortality Database")
  m_e65_DEUTW + labs(y = "Annual change in e65", title = "Germany: West", subtitle = "Life expectancy changes at aged 65 for males", caption = "Source: Human Mortality Database")
+ 
+ ex_DEUTW <- hmd_ex_selected_countries_with_synth %>%
+      filter(sex %in% c("female", "male")) %>%
+      filter(code == "DEUTW") %>%
+    group_by(sex, x) %>% arrange(year) %>%
+      mutate(delta_ex = ex - lag(ex)) %>%
+    ungroup %>%
+    filter(year >= 1979) %>%
+    ggplot(aes(x = year, y = delta_ex)) + geom_point() +
+   geom_line() +
+   geom_hline(yintercept = 0) +
+    stat_smooth(mapping = aes(colour = sex)) +
+       facet_grid(x ~ sex) 
+  
+  ex_ENW + labs(x = "Year", y = "Annual change in life expectancy", title = "Germany: West", subtitle = "Life expectancy changes at birth (0) and aged 65 (65) by sex", caption = "Source: Human Mortality Database")
 ```
 
 # Discussion
