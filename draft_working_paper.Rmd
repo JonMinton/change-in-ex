@@ -1,0 +1,1807 @@
+
+---
+title: "How do changes in ex vary between countries?"
+author: "Jon Minton, Lucinda Hiam"
+date: "22/02/2022"
+output: word_document
+---
+
+# To dos
+
+- [ ] Create flextable by decade
+
+# Introduction 
+
+Stalling of life expectancy improvements occurred in the UK from 2010 onwards. It was also seen in some other Western European countries. While the reason and severity of this is debated, some also contend the stalling of improvements seen is artefact following an unusual decade of improvement in 2000s (e.g. Murphy 2021).
+
+- [ ] Introduction to be written once methods/results discussed and decided on
+
+This notebook will compare annual changes in life expectancy at both birth ($e_0$) and at age 65 ($e_{65}$) from 1980 to 2019 (or the latest available year) in England and Wales, Scotland, France, Italy, Spains and Germany. Germany includes a 'Synthetic Germany' created from a weighted average of East and West German data for common years. The method for creating this 'Synthetic Germany' is covered in the methods section in brief and in Appendix X for more detail. In order to explore the hypothesis that the recent stalling in life expectancy, most marked in England and Wales, was an expected 'correction' after a decade of unusually fast life expectancy improvements, we have selected the years from 1980 onwards.
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = FALSE,
+  tab.id = NULL,
+  tab.cap = NULL,
+  tab.topcaption = TRUE,
+  tab.lp = "tab:"  
+  
+  )
+```
+
+# Methods 
+
+## Data 
+
+Data were extracted from the [Human Mortality Database](https://mortality.org/) via the R package [`HMDHFDplus`](http://www.demogr.mpg.de/en/projects_publications/publications_1904/mpidr_technical_reports/reading_human_fertility_database_and_human_mortality_database_data_into_r_5438.htm). 
+
+The following countries are included in the comparison:
+
+- England & Wales (`GBRTENW`)
+- Scotland (`GBR_SCO`)
+- UK as a whole (`GBR_UK`) #we haven't included UK but can do
+- France (`FRANTP`)
+- Spain (`ESP`)
+- Italy (`ITA`)
+- Germany
+   - Total Germany (`DEUTNP`)
+   - East Germany (`DEUTE`)
+   - West Germany (`DEUTW`)
+   - Simulated/Synthetic Germany
+
+
+```{r, echo=FALSE}
+# load packages
+pacman::p_load(knitr, here, tidyverse, flextable) # using flextable instead of gt. It seems to be better 
+# developed, more commonly used, and has more clearly labelled function names.
+# load data 
+hmd_lt <- read_rds(here("data", "lifetables.rds"))
+```
+
+
+## Analysis 
+
+For each of these countries, and for males and females separately, we are interested in the annual changes in life expectancy at birth ($e_0$) and life expectancy at age 65 ($e_{65}$), from 1980 to the last available year for each country. In addition, we compare average life expectancy improvements over the 4 decades: 1980, 1990, 2000, and 2010.
+
+We then compared whether the average between the decades was significant, using a regression model. 
+
+### Synthetic Germany 
+
+- To maybe be moved to the appendix later 
+
+To allow UK national trends to be compared with a single German population, we attempted to produce a 'Synthetic German' population with data for East and West Germany for years prior to reunification. We estimated that this 'Synthetic Germany' could be produced by using a weighted average of 20% East Germany, and 80% West German life expectancy trends. More precise estimates can be produced, and the methods used to reach this conclusion are detailed in Appendix X. 
+
+
+
+```{r, echo = FALSE}
+countries_of_interest <- c(
+  "GBRTENW",
+  "GBR_SCO",
+  "GBR_UK",
+  "FRATNP",
+  "ESP",
+  "ITA",
+  "DEUTNP",
+  "DEUTE", 
+  "DEUTW"
+)
+hmd_ex_selected_countries <- 
+  hmd_lt %>% 
+    filter(code %in% countries_of_interest) %>% 
+    filter(Age %in% c(0, 65)) %>% 
+    select(code, Year, Age, sex, ex) %>% 
+    rename(x = Age, year = Year)
+hmd_ex_selected_countries
+# Code for producing synthetic Germany
+source(here("R", "make_synthetic_germany_functions.R"))
+series_east_f0 <- hmd_ex_selected_countries %>% 
+  filter(code == "DEUTE") %>% 
+  filter(between(year, 1980, 2020)) %>% 
+  filter(x == 0) %>% 
+  filter(sex == "female") %>% 
+  arrange(year) %>% 
+  pull(ex)
+series_west_f0 <- hmd_ex_selected_countries %>% 
+  filter(code == "DEUTW") %>% 
+  filter(between(year, 1980, 2020)) %>% 
+  filter(x == 0) %>% 
+  filter(sex == "female") %>% 
+  arrange(year) %>% 
+  pull(ex)
+tmp_df_f0 <- tibble(
+  code = "DEUTSYNTH",
+  year = 1980:2017,
+  x = 0,
+  sex = "female", 
+  ex = make_synthetic_population(series_east_f0, series_west_f0, p_east = 0.2)
+)
+###
+series_east_f65 <- hmd_ex_selected_countries %>% 
+  filter(code == "DEUTE") %>% 
+  filter(between(year, 1980, 2020)) %>% 
+  filter(x == 65) %>% 
+  filter(sex == "female") %>% 
+  arrange(year) %>% 
+  pull(ex)
+series_west_f65 <- hmd_ex_selected_countries %>% 
+  filter(code == "DEUTW") %>% 
+  filter(between(year, 1980, 2020)) %>% 
+  filter(x == 65) %>% 
+  filter(sex == "female") %>% 
+  arrange(year) %>% 
+  pull(ex)
+tmp_df_f65 <- tibble(
+  code = "DEUTSYNTH",
+  year = 1980:2017,
+  x = 65,
+  sex = "female", 
+  ex = make_synthetic_population(series_east_f65, series_west_f65, p_east = 0.2)
+)
+##
+series_east_m0 <- hmd_ex_selected_countries %>% 
+  filter(code == "DEUTE") %>% 
+  filter(between(year, 1980, 2020)) %>% 
+  filter(x == 0) %>% 
+  filter(sex == "male") %>% 
+  arrange(year) %>% 
+  pull(ex)
+series_west_m0 <- hmd_ex_selected_countries %>% 
+  filter(code == "DEUTW") %>% 
+  filter(between(year, 1980, 2020)) %>% 
+  filter(x == 0) %>% 
+  filter(sex == "male") %>% 
+  arrange(year) %>% 
+  pull(ex)
+tmp_df_m0 <- tibble(
+  code = "DEUTSYNTH",
+  year = 1980:2017,
+  x = 0,
+  sex = "male", 
+  ex = make_synthetic_population(series_east_m0, series_west_m0, p_east = 0.2)
+)
+###
+series_east_m65 <- hmd_ex_selected_countries %>% 
+  filter(code == "DEUTE") %>% 
+  filter(between(year, 1980, 2020)) %>% 
+  filter(x == 65) %>% 
+  filter(sex == "male") %>% 
+  arrange(year) %>% 
+  pull(ex)
+series_west_m65 <- hmd_ex_selected_countries %>% 
+  filter(code == "DEUTW") %>% 
+  filter(between(year, 1980, 2020)) %>% 
+  filter(x == 65) %>% 
+  filter(sex == "male") %>% 
+  arrange(year) %>% 
+  pull(ex)
+tmp_df_m65 <- tibble(
+  code = "DEUTSYNTH",
+  year = 1980:2017,
+  x = 65,
+  sex = "male", 
+  ex = make_synthetic_population(series_east_m65, series_west_m65, p_east = 0.2)
+)
+hmd_ex_selected_countries_with_synth <- bind_rows(
+  hmd_ex_selected_countries,
+  tmp_df_m0,
+  tmp_df_m65,
+  tmp_df_f0,
+  tmp_df_f65
+)
+# Labels for codes 
+country_code_lookup <- 
+  tribble(
+    ~code, ~country,
+    "DEUTNP", "Germany",
+    "DEUTE", "East Germany",
+    "DEUTW", "West Germany",
+    "ESP", "Spain",
+    "FRATNP", "France", 
+    "ITA", "Italy",
+    "GBRTENW", "England & Wales",
+    "GBR_SCO", "Scotland",
+    "DEUTSYNTH", "Synthetic Germany"
+  )
+```
+
+# Results
+
+## Descriptive Results 
+
+### Life expectancy trends 
+
+The following figures show life expectancy at birth and at age 65 for selected nations from 1980 to the latest available year for males and females.
+
+
+
+```{r, echo = FALSE, fig.cap = "Life Expectancy at birth"}
+hmd_ex_selected_countries_with_synth %>% 
+  left_join(country_code_lookup) %>% 
+  mutate(country = factor(country, levels = c("England & Wales", "Scotland", "East Germany", "West Germany", "Germany", "Synthetic Germany", "Spain", "France", "Italy"))) %>% 
+  filter(between(year, 1980, 2020)) %>% 
+  filter(x == 0) %>% 
+  ggplot(aes(x = year, y = ex, group = sex, colour = sex, linetype = sex)) + 
+  geom_line() +
+  facet_wrap(~country) +
+  labs(
+    x = "Year",
+    y = "Life Expectancy at birth",
+    title = "Life expectancies at birth for selected nations",
+    subtitle = "1980 to 2020 or latest available year",
+    caption = "Source: Human Mortality Database"
+  )
+```
+
+
+
+```{r, echo = FALSE, fig.cap = "Life Expectancy at age 65"}
+hmd_ex_selected_countries_with_synth %>% 
+  left_join(country_code_lookup) %>% 
+  mutate(country = factor(country, levels = c("England & Wales", "Scotland", "East Germany", "West Germany", "Germany", "Synthetic Germany", "Spain", "France", "Italy"))) %>% 
+  filter(between(year, 1980, 2020)) %>% 
+  filter(x == 65) %>% 
+  ggplot(aes(x = year, y = ex, group = sex, colour = sex, linetype = sex)) + 
+  geom_line() +
+  facet_wrap(~country) +
+  labs(
+    x = "Year",
+    y = "Life Expectancy at age 65",
+    title = "Life expectancies at age 65 for selected nations",
+    subtitle = "1980 to 2020 or latest available year",
+    caption = "Source: Human Mortality Database"
+  )
+```
+
+
+## Change in life expectancy in these nations 
+
+Next, we compare the annual change in life expectancy at birth and at aged 65 years for the nations from 1980 to the latest available year, by sex.
+
+```{r, echo=FALSE}
+change_in_ex_selected_countries <- 
+  hmd_ex_selected_countries_with_synth %>% 
+    group_by(code, x, sex) %>% 
+    arrange(year) %>% 
+    mutate(delta_ex = ex - lag(ex)) %>% 
+    ungroup() 
+    
+change_in_ex_selected_countries
+```
+
+### Changes in life expectancy at birth 
+
+- [ ] make smoother lines coloured by sex
+- [X] use consistent colours for all graphs showing separate sex results
+
+
+```{r, echo = FALSE, warning=FALSE, message = FALSE, fig.height=8, fig.width=8}
+change_in_ex_selected_countries %>% 
+  filter(x == 0) %>% 
+  left_join(country_code_lookup) %>% 
+  mutate(country = factor(country, levels = c("England & Wales", "Scotland", "East Germany", "West Germany", "Germany", "Synthetic Germany", "Spain", "France", "Italy"))) %>% 
+  filter(between(year, 1980, 2020)) %>% 
+  ggplot(aes(x = year, y = delta_ex, colour=sex)) + 
+  geom_point(alpha = 0.2) + 
+  stat_smooth() + 
+  facet_grid(country~sex) + 
+  geom_hline(yintercept = 0) + 
+  theme(strip.text.y = element_text(angle = 0)) + 
+  labs(
+    x = "Year",
+    y = "Year-on-year change in life expectancy",
+    title = "Annual change in life expectancy at birth, selected countries",
+    subtitle = "Blue line: nonlinear smoother",
+    caption =  "Source: Human Mortality Database. Synthetic Germany based on 20% East/80% West German population weighting"
+  )
+```
+
+### Changes in life expectancy at age 65 
+
+- [ ] Use slightly stronger (and consistent) colours for sex smoother lines
+
+```{r, echo = FALSE, warning=FALSE, message = FALSE, fig.height=8, fig.width=8}
+change_in_ex_selected_countries %>% 
+  filter(x == 65) %>% 
+  left_join(country_code_lookup) %>% 
+  mutate(country = factor(country, levels = c("England & Wales", "Scotland", "East Germany", "West Germany", "Germany", "Synthetic Germany", "Spain", "France", "Italy"))) %>% 
+  filter(between(year, 1980, 2020)) %>% 
+  ggplot(aes(x = year, y = delta_ex, colour=sex)) + 
+  geom_point(alpha = 0.2) + 
+  stat_smooth() + 
+  facet_grid(country~sex) + 
+  geom_hline(yintercept = 0) + 
+  theme(strip.text.y = element_text(angle = 0)) + 
+  labs(
+    x = "Year",
+    y = "Year-on-year change in life expectancy",
+    title = "Annual change in life expectancy at age 65, selected countries",
+    subtitle = "Blue line: nonlinear smoother",
+    caption =  "Source: Human Mortality Database. Synthetic Germany based on 20% East/80% West German population weighting"
+  )
+```
+
+
+## Time trends 
+
+Finally, we used time-trend analysis to explore the changes in life expectancy over the 4 decades: 1980s, 1990s, 2000s, and 2010s. This produces the average change for the decade, whether negative or positive, the standard error and its statistical significance for each country by sex.
+
+- [X] Give this a title and further info (lower priority)
+- [X] Look at splitting by starting age 
+    - [ ] Look at further refining starting age split
+
+```{r, echo = FALSE, warning = FALSE, message = FALSE}
+hmd_ex_selected_countries_with_synth %>% 
+    filter(year >= 1979) %>% 
+    filter(!(code %in% c("DEUTE", "DEUTW", "DEUTNP"))) %>%  # Using only synthetic germany for longer time period
+    group_by(code, x, sex) %>% 
+    arrange(year) %>% 
+    mutate(delta_ex = ex - lag(ex)) %>% 
+    nest() %>% 
+    mutate(
+      rwd_model = map(data, ~lm(delta_ex ~ 1, data = . )),
+      ar_model  = map(data, ~lm(delta_ex ~ lag(delta_ex), data = .))
+    ) %>% 
+    mutate(
+      aic_rwd = map_dbl(rwd_model, AIC),
+      aic_ar  = map_dbl(ar_model, AIC)
+    ) %>% 
+    mutate(
+      diff_aic = aic_ar - aic_rwd
+    )  %>% 
+  # filter(diff_aic > 0)
+  mutate(
+    tidied_ar_model = map(ar_model, broom::tidy)
+  ) %>% 
+  unnest(tidied_ar_model) %>% 
+  filter(term == "(Intercept)") %>% 
+  arrange(desc(estimate)) %>%
+  left_join(country_code_lookup) %>% 
+  mutate(country = factor(country, levels = c("England & Wales", "Scotland", "East Germany", "West Germany", "Germany", "Synthetic Germany", "Spain", "France", "Italy"))) %>% 
+  select(code, country, x, sex, estimate, std.error) %>% 
+  mutate(display_label = glue::glue("{country}_{x}_{sex}")) %>% 
+  ggplot(aes(estimate, fct_reorder(display_label, estimate))) + 
+  geom_point(aes(colour = x), show.legend = FALSE) +
+  expand_limits( x = 0) + 
+  geom_vline(xintercept = 0) + 
+  labs(
+    x = "Average annual life expectancy change",
+    y = "Country-sex combination",
+    title = "Average annual improvements by country and sex",
+    subtitle = "Range: 1980 to 2020 or nearest available years",
+    caption = "Source: Human Mortality Database"
+  ) + 
+  facet_wrap(~x)
+  
+```
+
+## Graphs of annual change in life expectancy
+
+The below graphs show the annual change in life expectancy at birth and at aged 65 years for males and females for the nations examined. The pink and green lines are non-linear smoothed.
+
+NB: those with statistically significant 'breakpoints' in annual change in life expectancy are listed in the table above.
+
+### England and Wales
+
+```{r, echo = FALSE, warning=FALSE, message = FALSE}
+
+#ENW female at birth
+f_e0_ENW <- 
+  hmd_ex_selected_countries_with_synth %>% 
+      filter(x == 0) %>% 
+      filter(sex == "female") %>% 
+      filter(code == "GBRTENW") %>% 
+      filter(year >= 1979)
+
+# Now we create the change in ex variable as that's the response variable in the model
+  f_e0_ENW <- f_e0_ENW %>% 
+    arrange(year) %>% 
+    mutate(delta_ex = ex - lag(ex)) %>% 
+   ggplot(aes(x = year, y = delta_ex)) + geom_point() + 
+   geom_line() +
+   geom_hline(yintercept = 0) + 
+   stat_smooth(colour = "lightpink3") 
+
+  #ENW male at birth
+m_e0_ENW <- 
+  hmd_ex_selected_countries_with_synth %>% 
+      filter(x == 0) %>% 
+      filter(sex == "male") %>% 
+      filter(code == "GBRTENW") %>% 
+      filter(year >= 1979)
+
+  m_e0_ENW <- m_e0_ENW %>% 
+    arrange(year) %>% 
+    mutate(delta_ex = ex - lag(ex)) %>% 
+   ggplot(aes(x = year, y = delta_ex)) + geom_point() + 
+   geom_line() +
+   geom_hline(yintercept = 0) + 
+   stat_smooth(colour = "aquamarine4") 
+  
+  #ENW female at age 65
+f_e65_ENW <- 
+  hmd_ex_selected_countries_with_synth %>% 
+      filter(x == 65) %>% 
+      filter(sex == "female") %>% 
+      filter(code == "GBRTENW") %>% 
+      filter(year >= 1979)
+
+# Now we create the change in ex variable 
+  f_e65_ENW <- f_e65_ENW %>% 
+    arrange(year) %>% 
+    mutate(delta_ex = ex - lag(ex)) %>% 
+   ggplot(aes(x = year, y = delta_ex)) + geom_point() + 
+   geom_line() +
+   geom_hline(yintercept = 0) + 
+   stat_smooth(colour = "lightpink3") 
+
+  #ENW male at aged 65
+m_e65_ENW <- 
+  hmd_ex_selected_countries_with_synth %>% 
+      filter(x == 65) %>% 
+      filter(sex == "male") %>% 
+      filter(code == "GBRTENW") %>% 
+      filter(year >= 1979)
+
+ m_e65_ENW <- m_e65_ENW %>% 
+    arrange(year) %>% 
+    mutate(delta_ex = ex - lag(ex)) %>% 
+   ggplot(aes(x = year, y = delta_ex)) + geom_point() + 
+   geom_line() +
+   geom_hline(yintercept = 0) + 
+   stat_smooth(colour = "aquamarine4") 
+  
+ #add labels
+f_e0_ENW + labs(y = "Annual change in e0", title = "England and Wales", subtitle = "Life expectancy changes at birth for females", caption = "Source: Human Mortality Database")
+
+m_e0_ENW + labs(y = "Annual change in e0", title = "England and Wales", subtitle = "Life expectancy changes at birth for males", caption = "Source: Human Mortality Database")
+
+f_e65_ENW + labs(y = "Annual change in e65", title = "England and Wales", subtitle = "Life expectancy changes at aged 65 for females", caption = "Source: Human Mortality Database")
+
+m_e65_ENW + labs(y = "Annual change in e65", title = "England and Wales", subtitle = "Life expectancy changes at aged 65 for males", caption = "Source: Human Mortality Database") 
+
+  #to make grid, first assign to object
+# f_e0_ENW <- f_e0_ENW + labs(y = "Annual change in e0", title = "England and Wales", subtitle = "Life expectancy changes at birth for females", caption = "Source: Human Mortality Database")
+# 
+# m_e0_ENW <- m_e0_ENW + labs(y = "Annual change in e0", title = "England and Wales", subtitle = "Life expectancy changes at birth for males", caption = "Source: Human Mortality Database")
+# 
+# f_e65_ENW <- f_e65_ENW + labs(y = "Annual change in e65", title = "England and Wales", subtitle = "Life expectancy changes at aged 65 for females", caption = "Source: Human Mortality Database")
+# 
+# m_e65_ENW <- m_e65_ENW + labs(y = "Annual change in e65", title = "England and Wales", subtitle = "Life expectancy changes at aged 65 for males", caption = "Source: Human Mortality Database")
+
+#changing labels for grid to work
+# f_e0_ENW <- f_e0_ENW + labs(y = "Annual change in e0", title = "England and Wales", subtitle = "Life expectancy changes at birth for females")
+# m_e0_ENW <- m_e0_ENW + labs(y = "Annual change in e0", subtitle = "Life expectancy changes at birth for males")
+# f_e65_ENW <- f_e65_ENW + labs(y = "Annual change in e65")
+# m_e65_ENW <- m_e65_ENW + labs(y = "Annual change in e65", caption = "Source: Human Mortality Database")
+# #put side by side, needs package gridExtra then uses grid.arrange(plot1, plot2, ncol=2)
+# grid.arrange(f_e0_ENW, m_e0_ENW, f_e65_ENW, m_e65_ENW, ncol=2, nrow=2)
+# #grid.arrange(f_e65_ENW, m_e65_ENW, ncol=2, nrow=2)
+
+#   hmd_ex_selected_countries_with_synth %>% 
+#       filter(sex == "male") %>% 
+#       filter(code %in% c("GBRTENW", "GBR_SCO")) %>% 
+#     group_by(code, x) %>% arrange(year) %>% 
+#       mutate(delta_ex = ex - lag(ex)) %>%
+#     ungroup %>% 
+#     filter(year >= 1979) %>% 
+#     ggplot(aes(x = year, y = delta_ex)) + geom_point() + 
+#    geom_line() +
+#    geom_hline(yintercept = 0) + 
+#    stat_smooth(colour = "aquamarine4")+
+# facet_grid(x ~ code)
+
+  ex_ENW <- hmd_ex_selected_countries_with_synth %>%
+      filter(sex %in% c("female", "male")) %>%
+      filter(code == "GBRTENW") %>%
+    group_by(sex, x) %>% arrange(year) %>%
+      mutate(delta_ex = ex - lag(ex)) %>%
+    ungroup %>%
+    filter(year >= 1979) %>%
+    ggplot(aes(x = year, y = delta_ex)) + geom_point() +
+   geom_line() +
+   geom_hline(yintercept = 0) +
+    stat_smooth(mapping = aes(colour = sex)) +
+       facet_grid(x ~ sex) 
+  
+  ex_ENW + labs(x = "Year", y = "Annual change in life expectancy", title = "England and Wales", subtitle = "Life expectancy changes at birth (0) and aged 65 (65) by sex", caption = "Source: Human Mortality Database") 
+   
+   
+
+```
+
+### Scotland
+```{r, echo = FALSE, warning=FALSE, message = FALSE}
+#SCO female at birth
+f_e0_SCO <- 
+  hmd_ex_selected_countries_with_synth %>% 
+      filter(x == 0) %>% 
+      filter(sex == "female") %>% 
+      filter(code == "GBR_SCO") %>% 
+      filter(year >= 1979)
+
+# Now we create the change in ex variable as that's the response variable in the model
+  f_e0_SCO <- f_e0_SCO %>% 
+    arrange(year) %>% 
+    mutate(delta_ex = ex - lag(ex)) %>% 
+   ggplot(aes(x = year, y = delta_ex)) + geom_point() + 
+   geom_line() +
+   geom_hline(yintercept = 0) + 
+   stat_smooth(colour = "lightpink3") 
+
+  #SCO male at birth
+m_e0_SCO <- 
+  hmd_ex_selected_countries_with_synth %>% 
+      filter(x == 0) %>% 
+      filter(sex == "male") %>% 
+      filter(code == "GBR_SCO") %>% 
+      filter(year >= 1979)
+
+  m_e0_SCO <- m_e0_SCO %>% 
+    arrange(year) %>% 
+    mutate(delta_ex = ex - lag(ex)) %>% 
+   ggplot(aes(x = year, y = delta_ex)) + geom_point() + 
+   geom_line() +
+   geom_hline(yintercept = 0) + 
+   stat_smooth(colour = "aquamarine4") 
+  
+  #SCO female at age 65
+f_e65_SCO <- 
+  hmd_ex_selected_countries_with_synth %>% 
+      filter(x == 65) %>% 
+      filter(sex == "female") %>% 
+      filter(code == "GBR_SCO") %>% 
+      filter(year >= 1979)
+
+# Now we create the change in ex variable as that's the response variable in the model
+  f_e65_SCO <- f_e65_SCO %>% 
+    arrange(year) %>% 
+    mutate(delta_ex = ex - lag(ex)) %>% 
+   ggplot(aes(x = year, y = delta_ex)) + geom_point() + 
+   geom_line() +
+   geom_hline(yintercept = 0) + 
+   stat_smooth(colour = "lightpink3") 
+
+  #SCO male at aged 65
+m_e65_SCO <- 
+  hmd_ex_selected_countries_with_synth %>% 
+      filter(x == 65) %>% 
+      filter(sex == "male") %>% 
+      filter(code == "GBR_SCO") %>% 
+      filter(year >= 1979)
+
+ m_e65_SCO <-  m_e65_SCO %>% 
+    arrange(year) %>% 
+    mutate(delta_ex = ex - lag(ex)) %>% 
+   ggplot(aes(x = year, y = delta_ex)) + geom_point() + 
+   geom_line() +
+   geom_hline(yintercept = 0) + 
+   stat_smooth(colour = "aquamarine4", show.legend = TRUE) 
+  
+  #add labels
+f_e0_SCO + labs(y = "Annual change in e0", title = "Scotland", subtitle = "Life expectancy changes at birth for females", caption = "Source: Human Mortality Database")
+ m_e0_SCO + labs(y = "Annual change in e0", title = "Scotland", subtitle = "Life expectancy changes at birth for males", caption = "Source: Human Mortality Database")
+ f_e65_SCO + labs(y = "Annual change in e65", title = "Scotland", subtitle = "Life expectancy changes at aged 65 for females", caption = "Source: Human Mortality Database")
+ m_e65_SCO + labs(y = "Annual change in e65", title = "Scotland", subtitle = "Life expectancy changes at aged 65 for males", caption = "Source: Human Mortality Database")
+ 
+ ex_SCO <- hmd_ex_selected_countries_with_synth %>%
+      filter(sex %in% c("female", "male")) %>%
+      filter(code == "GBR_SCO") %>%
+    group_by(sex, x) %>% arrange(year) %>%
+      mutate(delta_ex = ex - lag(ex)) %>%
+    ungroup %>%
+    filter(year >= 1979) %>%
+    ggplot(aes(x = year, y = delta_ex)) + geom_point() +
+   geom_line() +
+   geom_hline(yintercept = 0) +
+    stat_smooth(mapping = aes(colour = sex)) +
+       facet_grid(x ~ sex) 
+  
+  ex_SCO + labs(x = "Year", y = "Annual change in life expectancy", title = "Scotland", subtitle = "Life expectancy changes at birth (0) and aged 65 (65) by sex", caption = "Source: Human Mortality Database")
+```
+
+### France
+
+```{r, echo = FALSE, warning=FALSE, message = FALSE}
+#FRA female at birth
+f_e0_FRA <- 
+  hmd_ex_selected_countries_with_synth %>% 
+      filter(x == 0) %>% 
+      filter(sex == "female") %>% 
+      filter(code == "FRATNP") %>% 
+      filter(year >= 1979)
+
+# Now we create the change in ex variable as that's the response variable in the model
+  f_e0_FRA <- f_e0_FRA %>% 
+    arrange(year) %>% 
+    mutate(delta_ex = ex - lag(ex)) %>% 
+   ggplot(aes(x = year, y = delta_ex)) + geom_point() + 
+   geom_line() +
+   geom_hline(yintercept = 0) + 
+   stat_smooth(colour = "lightpink3") 
+
+  #FRA male at birth
+m_e0_FRA <- 
+  hmd_ex_selected_countries_with_synth %>% 
+      filter(x == 0) %>% 
+      filter(sex == "male") %>% 
+      filter(code == "FRATNP") %>% 
+      filter(year >= 1979)
+
+  m_e0_FRA <- m_e0_FRA %>% 
+    arrange(year) %>% 
+    mutate(delta_ex = ex - lag(ex)) %>% 
+   ggplot(aes(x = year, y = delta_ex)) + geom_point() + 
+   geom_line() +
+   geom_hline(yintercept = 0) + 
+   stat_smooth(colour = "aquamarine4") 
+  
+  #FRA female at age 65
+f_e65_FRA <- 
+  hmd_ex_selected_countries_with_synth %>% 
+      filter(x == 65) %>% 
+      filter(sex == "female") %>% 
+      filter(code == "FRATNP") %>% 
+      filter(year >= 1979)
+
+# Now we create the change in ex variable as that's the response variable in the model
+  f_e65_FRA <- f_e65_FRA %>% 
+    arrange(year) %>% 
+    mutate(delta_ex = ex - lag(ex)) %>% 
+   ggplot(aes(x = year, y = delta_ex)) + geom_point() + 
+   geom_line() +
+   geom_hline(yintercept = 0) + 
+   stat_smooth(colour = "lightpink3") 
+
+  #FRA male at aged 65
+m_e65_FRA <- 
+  hmd_ex_selected_countries_with_synth %>% 
+      filter(x == 65) %>% 
+      filter(sex == "male") %>% 
+      filter(code == "FRATNP") %>% 
+      filter(year >= 1979)
+
+ m_e65_FRA <-  m_e65_FRA %>% 
+    arrange(year) %>% 
+    mutate(delta_ex = ex - lag(ex)) %>% 
+   ggplot(aes(x = year, y = delta_ex)) + geom_point() + 
+   geom_line() +
+   geom_hline(yintercept = 0) + 
+   stat_smooth(colour = "aquamarine4", show.legend = TRUE) 
+  
+  #add labels
+f_e0_FRA + labs(y = "Annual change in e0", title = "France", subtitle = "Life expectancy changes at birth for females", caption = "Source: Human Mortality Database")
+ m_e0_FRA + labs(y = "Annual change in e0", title = "France", subtitle = "Life expectancy changes at birth for males", caption = "Source: Human Mortality Database")
+ f_e65_FRA + labs(y = "Annual change in e65", title = "France", subtitle = "Life expectancy changes at aged 65 for females", caption = "Source: Human Mortality Database")
+ m_e65_FRA + labs(y = "Annual change in e65", title = "France", subtitle = "Life expectancy changes at aged 65 for males", caption = "Source: Human Mortality Database")
+ 
+ ex_FRA <- hmd_ex_selected_countries_with_synth %>%
+      filter(sex %in% c("female", "male")) %>%
+      filter(code == "FRATNP") %>%
+    group_by(sex, x) %>% arrange(year) %>%
+      mutate(delta_ex = ex - lag(ex)) %>%
+    ungroup %>%
+    filter(year >= 1979) %>%
+    ggplot(aes(x = year, y = delta_ex)) + geom_point() +
+   geom_line() +
+   geom_hline(yintercept = 0) +
+    stat_smooth(mapping = aes(colour = sex)) +
+       facet_grid(x ~ sex) 
+  
+  ex_FRA + labs(x = "Year", y = "Annual change in life expectancy", title = "France", subtitle = "Life expectancy changes at birth (0) and aged 65 (65) by sex", caption = "Source: Human Mortality Database")
+```
+
+### Spain
+
+```{r, echo = FALSE, warning=FALSE, message = FALSE}
+#ESP female at birth
+f_e0_ESP <- 
+  hmd_ex_selected_countries_with_synth %>% 
+      filter(x == 0) %>% 
+      filter(sex == "female") %>% 
+      filter(code == "ESP") %>% 
+      filter(year >= 1979)
+
+# Now we create the change in ex variable as that's the response variable in the model
+  f_e0_ESP <- f_e0_ESP %>% 
+    arrange(year) %>% 
+    mutate(delta_ex = ex - lag(ex)) %>% 
+   ggplot(aes(x = year, y = delta_ex)) + geom_point() + 
+   geom_line() +
+   geom_hline(yintercept = 0) + 
+   stat_smooth(colour = "lightpink3") 
+
+  #ESP male at birth
+m_e0_ESP <- 
+  hmd_ex_selected_countries_with_synth %>% 
+      filter(x == 0) %>% 
+      filter(sex == "male") %>% 
+      filter(code == "ESP") %>% 
+      filter(year >= 1979)
+
+  m_e0_ESP <- m_e0_ESP %>% 
+    arrange(year) %>% 
+    mutate(delta_ex = ex - lag(ex)) %>% 
+   ggplot(aes(x = year, y = delta_ex)) + geom_point() + 
+   geom_line() +
+   geom_hline(yintercept = 0) + 
+   stat_smooth(colour = "aquamarine4") 
+  
+  #ESP female at age 65
+f_e65_ESP <- 
+  hmd_ex_selected_countries_with_synth %>% 
+      filter(x == 65) %>% 
+      filter(sex == "female") %>% 
+      filter(code == "ESP") %>% 
+      filter(year >= 1979)
+
+# Now we create the change in ex variable as that's the response variable in the model
+  f_e65_ESP <- f_e65_ESP %>% 
+    arrange(year) %>% 
+    mutate(delta_ex = ex - lag(ex)) %>% 
+   ggplot(aes(x = year, y = delta_ex)) + geom_point() + 
+   geom_line() +
+   geom_hline(yintercept = 0) + 
+   stat_smooth(colour = "lightpink3") 
+
+  #ESP male at aged 65
+m_e65_ESP <- 
+  hmd_ex_selected_countries_with_synth %>% 
+      filter(x == 65) %>% 
+      filter(sex == "male") %>% 
+      filter(code == "ESP") %>% 
+      filter(year >= 1979)
+
+ m_e65_ESP <-  m_e65_ESP %>% 
+    arrange(year) %>% 
+    mutate(delta_ex = ex - lag(ex)) %>% 
+   ggplot(aes(x = year, y = delta_ex)) + geom_point() + 
+   geom_line() +
+   geom_hline(yintercept = 0) + 
+   stat_smooth(colour = "aquamarine4", show.legend = TRUE) 
+  
+  #add labels
+f_e0_ESP + labs(y = "Annual change in e0", title = "Spain", subtitle = "Life expectancy changes at birth for females", caption = "Source: Human Mortality Database")
+ m_e0_ESP + labs(y = "Annual change in e0", title = "Spain", subtitle = "Life expectancy changes at birth for males", caption = "Source: Human Mortality Database")
+ f_e65_ESP + labs(y = "Annual change in e65", title = "Spain", subtitle = "Life expectancy changes at aged 65 for females", caption = "Source: Human Mortality Database")
+ m_e65_ESP + labs(y = "Annual change in e65", title = "Spain", subtitle = "Life expectancy changes at aged 65 for males", caption = "Source: Human Mortality Database")
+ 
+ ex_ESP <- hmd_ex_selected_countries_with_synth %>%
+      filter(sex %in% c("female", "male")) %>%
+      filter(code == "ESP") %>%
+    group_by(sex, x) %>% arrange(year) %>%
+      mutate(delta_ex = ex - lag(ex)) %>%
+    ungroup %>%
+    filter(year >= 1979) %>%
+    ggplot(aes(x = year, y = delta_ex)) + geom_point() +
+   geom_line() +
+   geom_hline(yintercept = 0) +
+    stat_smooth(mapping = aes(colour = sex)) +
+       facet_grid(x ~ sex) 
+  
+  ex_ESP + labs(x = "Year", y = "Annual change in life expectancy", title = "Spain", subtitle = "Life expectancy changes at birth (0) and aged 65 (65) by sex", caption = "Source: Human Mortality Database")
+```
+
+### Italy
+
+```{r, echo = FALSE, warning=FALSE, message = FALSE}
+#ITA female at birth
+f_e0_ITA <- 
+  hmd_ex_selected_countries_with_synth %>% 
+      filter(x == 0) %>% 
+      filter(sex == "female") %>% 
+      filter(code == "ITA") %>% 
+      filter(year >= 1979)
+
+# Now we create the change in ex variable as that's the response variable in the model
+  f_e0_ITA <- f_e0_ITA %>% 
+    arrange(year) %>% 
+    mutate(delta_ex = ex - lag(ex)) %>% 
+   ggplot(aes(x = year, y = delta_ex)) + geom_point() + 
+   geom_line() +
+   geom_hline(yintercept = 0) + 
+   stat_smooth(colour = "lightpink3") 
+
+  #ITA male at birth
+m_e0_ITA <- 
+  hmd_ex_selected_countries_with_synth %>% 
+      filter(x == 0) %>% 
+      filter(sex == "male") %>% 
+      filter(code == "ITA") %>% 
+      filter(year >= 1979)
+
+  m_e0_ITA <- m_e0_ITA %>% 
+    arrange(year) %>% 
+    mutate(delta_ex = ex - lag(ex)) %>% 
+   ggplot(aes(x = year, y = delta_ex)) + geom_point() + 
+   geom_line() +
+   geom_hline(yintercept = 0) + 
+   stat_smooth(colour = "aquamarine4") 
+  
+  #ITA female at age 65
+f_e65_ITA <- 
+  hmd_ex_selected_countries_with_synth %>% 
+      filter(x == 65) %>% 
+      filter(sex == "female") %>% 
+      filter(code == "ITA") %>% 
+      filter(year >= 1979)
+
+# Now we create the change in ex variable as that's the response variable in the model
+  f_e65_ITA <- f_e65_ITA %>% 
+    arrange(year) %>% 
+    mutate(delta_ex = ex - lag(ex)) %>% 
+   ggplot(aes(x = year, y = delta_ex)) + geom_point() + 
+   geom_line() +
+   geom_hline(yintercept = 0) + 
+   stat_smooth(colour = "lightpink3") 
+
+  #ITA male at aged 65
+m_e65_ITA <- 
+  hmd_ex_selected_countries_with_synth %>% 
+      filter(x == 65) %>% 
+      filter(sex == "male") %>% 
+      filter(code == "ITA") %>% 
+      filter(year >= 1979)
+
+ m_e65_ITA <-  m_e65_ITA %>% 
+    arrange(year) %>% 
+    mutate(delta_ex = ex - lag(ex)) %>% 
+   ggplot(aes(x = year, y = delta_ex)) + geom_point() + 
+   geom_line() +
+   geom_hline(yintercept = 0) + 
+   #Trying to add legend
+   #stat_smooth(aes(colour = "aquamarine4"), show.legend = TRUE, labels = "Smoothed")
+  stat_smooth(colour = "aquamarine4")
+  
+  #add labels
+f_e0_ITA + labs(y = "Annual change in e0", title = "Italy", subtitle = "Life expectancy changes at birth for females", caption = "Source: Human Mortality Database")
+ m_e0_ITA + labs(y = "Annual change in e0", title = "Italy", subtitle = "Life expectancy changes at birth for males", caption = "Source: Human Mortality Database")
+ f_e65_ITA + labs(y = "Annual change in e65", title = "Italy", subtitle = "Life expectancy changes at aged 65 for females", caption = "Source: Human Mortality Database")
+ m_e65_ITA + labs(y = "Annual change in e65", title = "Italy", subtitle = "Life expectancy changes at aged 65 for males", caption = "Source: Human Mortality Database")
+ 
+ ex_ITA <- hmd_ex_selected_countries_with_synth %>%
+      filter(sex %in% c("female", "male")) %>%
+      filter(code == "ITA") %>%
+    group_by(sex, x) %>% arrange(year) %>%
+      mutate(delta_ex = ex - lag(ex)) %>%
+    ungroup %>%
+    filter(year >= 1979) %>%
+    ggplot(aes(x = year, y = delta_ex)) + geom_point() +
+   geom_line() +
+   geom_hline(yintercept = 0) +
+    stat_smooth(mapping = aes(colour = sex)) +
+       facet_grid(x ~ sex) 
+  
+  ex_ITA + labs(x = "Year", y = "Annual change in life expectancy", title = "Italy", subtitle = "Life expectancy changes at birth (0) and aged 65 (65) by sex", caption = "Source: Human Mortality Database")
+```
+
+### Germany: Synthetic
+
+```{r, echo = FALSE, warning=FALSE, message = FALSE}
+#DEUTS female at birth
+f_e0_DEUTS <- 
+  hmd_ex_selected_countries_with_synth %>% 
+      filter(x == 0) %>% 
+      filter(sex == "female") %>% 
+      filter(code == "DEUTSYNTH") %>% 
+      filter(year >= 1979)
+
+# Now we create the change in ex variable as that's the response variable in the model
+  f_e0_DEUTS <- f_e0_DEUTS %>% 
+    arrange(year) %>% 
+    mutate(delta_ex = ex - lag(ex)) %>% 
+   ggplot(aes(x = year, y = delta_ex)) + geom_point() + 
+   geom_line() +
+   geom_hline(yintercept = 0) + 
+   stat_smooth(colour = "lightpink3") 
+
+  #DEUTS male at birth
+m_e0_DEUTS <- 
+  hmd_ex_selected_countries_with_synth %>% 
+      filter(x == 0) %>% 
+      filter(sex == "male") %>% 
+      filter(code == "DEUTSYNTH") %>% 
+      filter(year >= 1979)
+
+  m_e0_DEUTS <- m_e0_DEUTS %>% 
+    arrange(year) %>% 
+    mutate(delta_ex = ex - lag(ex)) %>% 
+   ggplot(aes(x = year, y = delta_ex)) + geom_point() + 
+   geom_line() +
+   geom_hline(yintercept = 0) + 
+   stat_smooth(colour = "aquamarine4") 
+  
+  #DEUTS female at age 65
+f_e65_DEUTS <- 
+  hmd_ex_selected_countries_with_synth %>% 
+      filter(x == 65) %>% 
+      filter(sex == "female") %>% 
+      filter(code == "DEUTSYNTH") %>% 
+      filter(year >= 1979)
+
+# Now we create the change in ex variable as that's the response variable in the model
+  f_e65_DEUTS <- f_e65_DEUTS %>% 
+    arrange(year) %>% 
+    mutate(delta_ex = ex - lag(ex)) %>% 
+   ggplot(aes(x = year, y = delta_ex)) + geom_point() + 
+   geom_line() +
+   geom_hline(yintercept = 0) + 
+   stat_smooth(colour = "lightpink3") 
+
+  #DEUTS male at aged 65
+m_e65_DEUTS <- 
+  hmd_ex_selected_countries_with_synth %>% 
+      filter(x == 65) %>% 
+      filter(sex == "male") %>% 
+      filter(code == "DEUTSYNTH") %>% 
+      filter(year >= 1979)
+
+ m_e65_DEUTS <-  m_e65_DEUTS %>% 
+    arrange(year) %>% 
+    mutate(delta_ex = ex - lag(ex)) %>% 
+   ggplot(aes(x = year, y = delta_ex)) + geom_point() + 
+   geom_line() +
+   geom_hline(yintercept = 0) + 
+   stat_smooth(colour = "aquamarine4", show.legend = TRUE) 
+  
+  #add labels
+f_e0_DEUTS + labs(y = "Annual change in e0", title = "Germany: Synthetic", subtitle = "Life expectancy changes at birth for females", caption = "Source: Human Mortality Database")
+ m_e0_DEUTS + labs(y = "Annual change in e0", title = "Germany: Synthetic", subtitle = "Life expectancy changes at birth for males", caption = "Source: Human Mortality Database")
+ f_e65_DEUTS + labs(y = "Annual change in e65", title = "Germany: Synthetic", subtitle = "Life expectancy changes at aged 65 for females", caption = "Source: Human Mortality Database")
+ m_e65_DEUTS + labs(y = "Annual change in e65", title = "Germany: Synthetic", subtitle = "Life expectancy changes at aged 65 for males", caption = "Source: Human Mortality Database")
+ 
+ #Grid
+ ex_DEUTSYNTH <- hmd_ex_selected_countries_with_synth %>%
+      filter(sex %in% c("female", "male")) %>%
+      filter(code == "DEUTSYNTH") %>%
+    group_by(sex, x) %>% arrange(year) %>%
+      mutate(delta_ex = ex - lag(ex)) %>%
+    ungroup %>%
+    filter(year >= 1979) %>%
+    ggplot(aes(x = year, y = delta_ex)) + geom_point() +
+   geom_line() +
+   geom_hline(yintercept = 0) +
+    stat_smooth(mapping = aes(colour = sex)) +
+       facet_grid(x ~ sex) 
+  
+  ex_DEUTSYNTH + labs(x = "Year", y = "Annual change in life expectancy", title = "Germany: Synthetic", subtitle = "Life expectancy changes at birth (0) and aged 65 (65) by sex", caption = "Source: Human Mortality Database")
+```
+
+### Germany: East
+
+```{r, echo = FALSE, warning=FALSE, message = FALSE}
+#DEUTE female at birth
+f_e0_DEUTE <- 
+  hmd_ex_selected_countries_with_synth %>% 
+      filter(x == 0) %>% 
+      filter(sex == "female") %>% 
+      filter(code == "DEUTE") %>% 
+      filter(year >= 1979)
+
+# Now we create the change in ex variable as that's the response variable in the model
+  f_e0_DEUTE <- f_e0_DEUTE %>% 
+    arrange(year) %>% 
+    mutate(delta_ex = ex - lag(ex)) %>% 
+   ggplot(aes(x = year, y = delta_ex)) + geom_point() + 
+   geom_line() +
+   geom_hline(yintercept = 0) + 
+   stat_smooth(colour = "lightpink3") 
+
+  #DEUTE male at birth
+m_e0_DEUTE <- 
+  hmd_ex_selected_countries_with_synth %>% 
+      filter(x == 0) %>% 
+      filter(sex == "male") %>% 
+      filter(code == "DEUTE") %>% 
+      filter(year >= 1979)
+
+  m_e0_DEUTE <- m_e0_DEUTE %>% 
+    arrange(year) %>% 
+    mutate(delta_ex = ex - lag(ex)) %>% 
+   ggplot(aes(x = year, y = delta_ex)) + geom_point() + 
+   geom_line() +
+   geom_hline(yintercept = 0) + 
+   stat_smooth(colour = "aquamarine4") 
+  
+  #DEUTE female at age 65
+f_e65_DEUTE <- 
+  hmd_ex_selected_countries_with_synth %>% 
+      filter(x == 65) %>% 
+      filter(sex == "female") %>% 
+      filter(code == "DEUTE") %>% 
+      filter(year >= 1979)
+
+# Now we create the change in ex variable as that's the response variable in the model
+  f_e65_DEUTE <- f_e65_DEUTE %>% 
+    arrange(year) %>% 
+    mutate(delta_ex = ex - lag(ex)) %>% 
+   ggplot(aes(x = year, y = delta_ex)) + geom_point() + 
+   geom_line() +
+   geom_hline(yintercept = 0) + 
+   stat_smooth(colour = "lightpink3") 
+
+  #DEUTE male at aged 65
+m_e65_DEUTE <- 
+  hmd_ex_selected_countries_with_synth %>% 
+      filter(x == 65) %>% 
+      filter(sex == "male") %>% 
+      filter(code == "DEUTE") %>% 
+      filter(year >= 1979)
+
+ m_e65_DEUTE <-  m_e65_DEUTE %>% 
+    arrange(year) %>% 
+    mutate(delta_ex = ex - lag(ex)) %>% 
+   ggplot(aes(x = year, y = delta_ex)) + geom_point() + 
+   geom_line() +
+   geom_hline(yintercept = 0) + 
+   stat_smooth(colour = "aquamarine4", show.legend = TRUE) 
+  
+  #add labels
+f_e0_DEUTE + labs(y = "Annual change in e0", title = "Germany: East", subtitle = "Life expectancy changes at birth for females", caption = "Source: Human Mortality Database")
+ m_e0_DEUTE + labs(y = "Annual change in e0", title = "Germany: East", subtitle = "Life expectancy changes at birth for males", caption = "Source: Human Mortality Database")
+ f_e65_DEUTE + labs(y = "Annual change in e65", title = "Germany: East", subtitle = "Life expectancy changes at aged 65 for females", caption = "Source: Human Mortality Database")
+ m_e65_DEUTE + labs(y = "Annual change in e65", title = "Germany: East", subtitle = "Life expectancy changes at aged 65 for males", caption = "Source: Human Mortality Database")
+ 
+ ex_DEUTE <- hmd_ex_selected_countries_with_synth %>%
+      filter(sex %in% c("female", "male")) %>%
+      filter(code == "DEUTE") %>%
+    group_by(sex, x) %>% arrange(year) %>%
+      mutate(delta_ex = ex - lag(ex)) %>%
+    ungroup %>%
+    filter(year >= 1979) %>%
+    ggplot(aes(x = year, y = delta_ex)) + geom_point() +
+   geom_line() +
+   geom_hline(yintercept = 0) +
+    stat_smooth(mapping = aes(colour = sex)) +
+       facet_grid(x ~ sex) 
+  
+  ex_DEUTE + labs(x = "Year", y = "Annual change in life expectancy", title = "Germany: East", subtitle = "Life expectancy changes at birth (0) and aged 65 (65) by sex", caption = "Source: Human Mortality Database")
+```
+
+### Germany: West
+
+```{r, echo = FALSE, warning=FALSE, message = FALSE}
+#DEUTW female at birth
+f_e0_DEUTW <- 
+  hmd_ex_selected_countries_with_synth %>% 
+      filter(x == 0) %>% 
+      filter(sex == "female") %>% 
+      filter(code == "DEUTW") %>% 
+      filter(year >= 1979)
+
+# Now we create the change in ex variable as that's the response variable in the model
+  f_e0_DEUTW <- f_e0_DEUTW %>% 
+    arrange(year) %>% 
+    mutate(delta_ex = ex - lag(ex)) %>% 
+   ggplot(aes(x = year, y = delta_ex)) + geom_point() + 
+   geom_line() +
+   geom_hline(yintercept = 0) + 
+   stat_smooth(colour = "lightpink3") 
+
+  #DEUTW male at birth
+m_e0_DEUTW <- 
+  hmd_ex_selected_countries_with_synth %>% 
+      filter(x == 0) %>% 
+      filter(sex == "male") %>% 
+      filter(code == "DEUTW") %>% 
+      filter(year >= 1979)
+
+  m_e0_DEUTW <- m_e0_DEUTW %>% 
+    arrange(year) %>% 
+    mutate(delta_ex = ex - lag(ex)) %>% 
+   ggplot(aes(x = year, y = delta_ex)) + geom_point() + 
+   geom_line() +
+   geom_hline(yintercept = 0) + 
+   stat_smooth(colour = "aquamarine4") 
+  
+  #DEUTW female at age 65
+f_e65_DEUTW <- 
+  hmd_ex_selected_countries_with_synth %>% 
+      filter(x == 65) %>% 
+      filter(sex == "female") %>% 
+      filter(code == "DEUTW") %>% 
+      filter(year >= 1979)
+
+# Now we create the change in ex variable as that's the response variable in the model
+  f_e65_DEUTW <- f_e65_DEUTW %>% 
+    arrange(year) %>% 
+    mutate(delta_ex = ex - lag(ex)) %>% 
+   ggplot(aes(x = year, y = delta_ex)) + geom_point() + 
+   geom_line() +
+   geom_hline(yintercept = 0) + 
+   stat_smooth(colour = "lightpink3") 
+
+  #DEUTW male at aged 65
+m_e65_DEUTW <- 
+  hmd_ex_selected_countries_with_synth %>% 
+      filter(x == 65) %>% 
+      filter(sex == "male") %>% 
+      filter(code == "DEUTW") %>% 
+      filter(year >= 1979)
+
+ m_e65_DEUTW <-  m_e65_DEUTW %>% 
+    arrange(year) %>% 
+    mutate(delta_ex = ex - lag(ex)) %>% 
+   ggplot(aes(x = year, y = delta_ex)) + geom_point() + 
+   geom_line() +
+   geom_hline(yintercept = 0) + 
+   stat_smooth(colour = "aquamarine4", show.legend = TRUE) 
+  
+  #add labels
+f_e0_DEUTW + labs(y = "Annual change in e0", title = "Germany: West", subtitle = "Life expectancy changes at birth for females", caption = "Source: Human Mortality Database")
+ m_e0_DEUTW + labs(y = "Annual change in e0", title = "Germany: West", subtitle = "Life expectancy changes at birth for males", caption = "Source: Human Mortality Database")
+ f_e65_DEUTW + labs(y = "Annual change in e65", title = "Germany: West", subtitle = "Life expectancy changes at aged 65 for females", caption = "Source: Human Mortality Database")
+ m_e65_DEUTW + labs(y = "Annual change in e65", title = "Germany: West", subtitle = "Life expectancy changes at aged 65 for males", caption = "Source: Human Mortality Database")
+ 
+ ex_DEUTW <- hmd_ex_selected_countries_with_synth %>%
+      filter(sex %in% c("female", "male")) %>%
+      filter(code == "DEUTW") %>%
+    group_by(sex, x) %>% arrange(year) %>%
+      mutate(delta_ex = ex - lag(ex)) %>%
+    ungroup %>%
+    filter(year >= 1979) %>%
+    ggplot(aes(x = year, y = delta_ex)) + geom_point() +
+   geom_line() +
+   geom_hline(yintercept = 0) +
+    stat_smooth(mapping = aes(colour = sex)) +
+       facet_grid(x ~ sex) 
+  
+  ex_DEUTW + labs(x = "Year", y = "Annual change in life expectancy", title = "Germany: West", subtitle = "Life expectancy changes at birth (0) and aged 65 (65) by sex", caption = "Source: Human Mortality Database")
+```
+
+
+## Average improvements by decade
+
+- [ ] Add further introduction 
+- [ ] Add statistical significance (though maybe this is a different analysis)
+
+The table below shows average improvements by decade for England and Wales (standard error).
+
+```{r, echo=FALSE, tab.cap = "Source: HMD"}
+hmd_ex_selected_countries_with_synth %>% 
+    filter(year >= 1979) %>% 
+    group_by(code, x, sex) %>% 
+    arrange(year) %>% 
+    mutate(delta_ex = ex - lag(ex)) %>%
+    mutate(decade = year - (year %% 10)) %>% 
+    filter(!is.na(delta_ex)) %>% 
+  group_by(code, x, sex, decade) %>% 
+  summarise(
+    mean_delta_ex = mean(delta_ex),
+    sd_delta_ex   = sd(delta_ex)
+    ) %>% 
+  ungroup() %>% 
+  mutate(cell_contents = glue::glue("{round(mean_delta_ex, 3)} ({round(sd_delta_ex, 3)})")
+  ) %>% 
+  filter(code == "GBRTENW") %>% 
+  filter(x == 0) %>% 
+  select(sex, decade, cell_contents) %>% 
+  spread(decade, cell_contents) %>% 
+#  write.csv("clipboard")
+  flextable() %>%
+  # Want to make the header row bold
+  vline(j = 1, part = "all") %>%
+  set_caption(caption = "Average improvement in life expectancy by decade") 
+  
+```
+
+### Are the differences by decade statistically significant? 
+
+Are there significant differences in average rates of change in $e_x$ by decade? Another way of expressing this question is to ask whether knowing the decade in which an observation has been observed is informative as to what such values will be. This rephrased question was addressed by, for each starting age (0 or 65 years), sex and country, fitting two competing model specifications - $M_0$ and $M_A$ - and running an F test on the residuals of these two models. The Null model specification, $M_0$, regresses $\delta e_x$ (observed annual changes in $e_x$) against a single intercept term $\alpha$; put another way: $M_0$ assumes that all observations are drawn from a Normal distribution with a mean value of $\alpha$, and that this is consistent across all observed decades. The alternative model specification, $M_A$, also includes the $\alpha$ term, but also includes dummy variables to indicate which decade the realised value of $\delta e_0$ corresponds to. (Because one of the decades needs to be the reference category against which other decades are compared, there are one fewer decadal dummy variables than decades in the dataset for a given country, and the $\alpha$ parameter in $M_A$ estimates the mean change in $\delta e_0$ in the first decade, and so cannot be compared directly with the $\alpha$ parameter in $M_0$.) A P-value from the F test comparing $M_0$ and $M_A$ of less than 0.05 is taken to indicate that $M_A$ should be preferred to $M_0$, and so that there are systemic differences in average rates of improvement by decade for a given country, sex, and starting age. 
+
+
+We found the only significant change decade-on-decades was for East Germany for females at birth and at aged 65 years. This is consistent with existing literature in this area, showing the convergence of life expectancy for females in East and West Germany following reunification.
+
+
+```{r, cache=TRUE}
+dta_for_decade_comparison <- 
+  hmd_ex_selected_countries_with_synth %>% 
+      filter(x == 0) %>% 
+      filter(sex == "female") %>% 
+      filter(code == "GBRTENW") %>% 
+      filter(year >= 1979) %>% 
+      # ggplot(aes(x = year, y = ex)) +
+      #   geom_line()
+      arrange(year) %>% 
+      mutate(delta_ex = ex - lag(ex)) %>% 
+    #   ggplot(aes(x = year, y = delta_ex)) + 
+    # geom_point() + geom_line() +
+    # geom_hline(yintercept = 0)
+      mutate(
+        decade = year - (year %% 10)
+      ) %>% 
+  filter(!is.na(delta_ex))
+model_null <- 
+  lm(delta_ex ~ 1, data = dta_for_decade_comparison)
+model_alt <- 
+  lm(delta_ex ~ factor(decade), data= dta_for_decade_comparison)
+summary(model_null)
+summary(model_alt)
+anova(model_null, model_alt)
+# to get the value of interest do tmp[2,6]
+# Generalising 
+tidy_dataset <- function(df){
+  df %>% 
+      filter(year >= 1979) %>% 
+      arrange(year) %>% 
+      mutate(delta_ex = ex - lag(ex)) %>% 
+      mutate(
+        decade = year - (year %% 10)
+      ) %>% 
+  filter(!is.na(delta_ex))
+}
+make_null_model <- function(df){
+  lm(delta_ex ~ 1, data = df)
+}
+all_null_alt_models <-
+  hmd_ex_selected_countries_with_synth %>%
+    group_by(x, sex, code) %>% 
+    nest() %>% 
+    mutate(
+      prep_data = map(data, tidy_dataset) 
+    ) %>% 
+    mutate(
+      model_null = map(prep_data, ~lm(delta_ex ~ 1, data = .)),
+      model_alt  = map(prep_data, ~lm(delta_ex ~ factor(decade), data = .))
+  #    model_null = map(prep_data, make_null_model)
+    ) %>% 
+    mutate(
+      anova_results = map2(model_null, model_alt, anova)
+    ) %>% 
+    mutate(
+      anova_pval = map_dbl(anova_results, ~.[2,6])
+    ) 
+all_null_alt_models %>% 
+  filter(anova_pval < 0.05) -> tmp
+summary(tmp$model_alt[[1]])
+summary(tmp$model_alt[[2]])
+  # build null model
+  # build alt model
+  # do anova
+  # get p value from anova
+  
+  
+  
+```
+
+### Joinpoint/Segmented regression approach 
+
+Though there may be systemic differences in average changes in life expectancy over time, such differences may not be patterned by decade, and so the above model specification may not have been appropriate to detect any such changes. Instead of looking for systemic differences by decade, we can instead look at whether there are any systemic and detectable 'breaks' in the trends over time. If our data were life expectancy over time, this could be achieved through joinpoint analysis, in which the slope is allowed to change over time. As instead are data are annual changes in life expectancy, we are interested in detecting changes in intercept over time. If we define our Null (no change) model as follows: 
+
+$$
+M_0 : y(t) = \alpha + e
+$$
+Where $e \backsim N(0, \sigma^2)$. i.e. all observations $y$ are draws from $N(\alpha, \sigma^2)$. The alternative model specification against which this is compared is then: 
+
+$$
+M_A : y(t) = \alpha_0 + \beta_1 T(t) + e 
+$$
+Where $T(t)$ is defined as $0$ where $t \lt \tau$ and $1$ where $t \geq \tau$. ($\alpha_0$ is used in $M_A$ to indicate that this parameter is not directly comparable with $\alpha$ in $M_0$).
+
+This specification shows that there is an additional parameter $\tau$ to be determined in order to produce $M_A$. This $\tau$ parameter is the breakpoint in the series. The selection of $\tau$ will be determined by numeric optimisation, by selecting the value of $\tau$ that minimised AIC. 
+
+Once the best possible $M_A$, using the best value of $\tau$, is selected, $M_A$ will be compared with $M_0$ using an F-test, allowing us to determine whether there is convincing evidence of any specific break in the data.  
+
+We will start with a single country, starting age, and sex, and with manual selection of $\tau$, then generalise and automate further. 
+
+
+```{r}
+# Let's start with a single example population. (There are many different population subgroups, hence the 
+# benefit of being able to automate this later.) We're going to start with England & Wales, females, life 
+# expectancy at birth (x == 0)
+example_df <- 
+  hmd_ex_selected_countries_with_synth %>% 
+      filter(x == 0) %>% 
+      filter(sex == "female") %>% 
+      filter(code == "GBRTENW") %>% 
+      filter(year >= 1979)
+# Now we create the change in ex variable as that's the response variable in the model
+example_df <- 
+  example_df %>% 
+    arrange(year) %>% 
+    mutate(delta_ex = ex - lag(ex)) # %>% 
+  # ggplot(aes(x = year, y = delta_ex)) + geom_point() + 
+  # geom_line() +
+  # geom_hline(yintercept = 0) + 
+  # stat_smooth()
+# The null model is really simple: just an intercept 
+model_null <- lm(delta_ex ~ 1, data = example_df)
+summary(model_null)
+# 
+# The code below shows how we can be even simpler, and force the regression model not to 
+# even have an intercept (i.e. have zero predictor variables)
+# model_nuller <- lm(delta_ex ~ 0, data = example_df)
+# summary(model_nuller)
+# And we can compare the intercept with the no intercept model as follows 
+# anova(model_nuller, model_null)
+# a statistically significant p value shows the intercept is definitely worth including in the 
+# model. Substantively that it's wrong to assume no improvement on average in ex over time since the 1980s
+# There are lots of possible alternative models, some examples of which are below:
+model_alt01 <- lm(delta_ex ~ year >= 1990, data = example_df)
+summary(model_alt01)
+model_alt02 <- lm(delta_ex ~ year >= 1995, data = example_df)
+summary(model_alt02)
+model_alt03 <- lm(delta_ex ~ year >= 1997, data = example_df)
+summary(model_alt03)
+model_alt04 <- lm(delta_ex ~ year >= 2008, data = example_df)
+summary(model_alt04)
+model_alt05 <- lm(delta_ex ~ year >= 2011, data = example_df)
+summary(model_alt05)
+# each of these models allows an adjustment to the horizontal line after a given year has been reached. 
+# In the examples above some possible given years are 1990, 1995, 1997, 2008 and 2011. 
+# Each of these is a candidate value for tau. But we've not looked at all possible/plausible values of this. 
+# Hence, it would be good to automate further to search for each possible tau and see how the fit and model 
+# results change. 
+# We'll start to automate by building a function which creates T_param given tau, and runs and returns the model
+# with this type of T_param
+# (If tau is 1990, then T_param is equivalent to model_alt01 above; if tau were 1995, then it's equivalent to model_alt02, and so on. The only difference is that the new coefficient created has the same name, T_param, 
+# whereas in the above it would have a different name each time, because the coefficient is being 
+# created in situ, within the formula specification, rather than by pre-processing the dataframe)
+run_alt_with_given_tau <- function(tau, df){
+  df <- 
+    df %>% 
+      filter(!is.na(delta_ex)) %>% 
+      mutate(
+        T_param = ifelse(year < tau, FALSE, TRUE)
+      )
+  
+  lm(delta_ex ~ T_param, data  = df)
+}
+# We can now run the above function, which creates a model, for a wide range of possible tau values
+# This is the sequence listed and named tau_candidate, which is every whole number from 
+# 1982 to 2015
+# For each of these models, we can then get a measure of model fit. We're going to use AIC, though 
+# could have used other measures. With AIC (and with BIC, and RMSE etc) better fit is indicated with 
+# a lower value
+grid_search_df <- tibble(
+  tau_candidate = 1982:2015 # column of candidate values
+) %>% 
+  mutate(
+    model_alt = map(tau_candidate, run_alt_with_given_tau, df = example_df) # run the model with the value of tau in tau_candidate
+  ) %>% 
+  mutate(
+    aic = map_dbl(model_alt, AIC)
+  )
+# Now we can see which proposed tau results in what fit value (AIC), initially just by graphing it.
+grid_search_df %>% 
+  ggplot(aes(tau_candidate, aic)) + 
+  geom_point()
+# So, in the above we found 2012 as tau minimised AIC. So, that's the best possible alternative model. 
+# Let's run and label it as such
+best_alt_model <- example_df %>% 
+  mutate( T_param = ifelse(year < 2012, FALSE, TRUE)) %>% 
+  lm(delta_ex ~ T_param, data = .)
+# Now we want to create the null model to compare it against (which just has an intercept term alone)
+null_model <- example_df %>% 
+  lm(delta_ex ~ 1, data = .)
+# And finally, we want to compare the best_alt_model against the null model using an F test
+anova(null_model, best_alt_model)
+# We are interested in the P value here. If it's statistically significant then the best_alt_model does better
+# (Is worth its additional complexity in terms of how much it makes the model fit) than the null model,
+# So... for females, from birth, in England & Wales, there's evidence that there WAS a significant change in 
+# average life expectancy improvement from 2012 onwards. (i.e. two years after austerity was introduced)
+# We can manually repeat the same exercise for some additional subsets of the data (population, gender, starting age combinations). The below shows the same for males in England & Wales, from birth.
+example_df <- 
+  hmd_ex_selected_countries_with_synth %>% 
+      filter(x == 0) %>% 
+      filter(sex == "male") %>% 
+      filter(code == "GBRTENW") %>% 
+      filter(year >= 1979)
+example_df <- 
+  example_df %>% 
+    arrange(year) %>% 
+    mutate(delta_ex = ex - lag(ex))
+grid_search_df <- tibble(
+  tau_candidate = 1982:2015
+) %>% 
+  mutate(
+    model_alt = map(tau_candidate, run_alt_with_given_tau, df = example_df)
+  ) %>% 
+  mutate(
+    aic = map_dbl(model_alt, AIC)
+  )
+grid_search_df %>% 
+  ggplot(aes(tau_candidate, aic)) + 
+  geom_point()
+best_alt_model <- example_df %>% 
+  mutate( T_param = ifelse(year < 2013, FALSE, TRUE)) %>% 
+  lm(delta_ex ~ T_param, data = .)
+null_model <- example_df %>% 
+  lm(delta_ex ~ 1, data = .)
+anova(null_model, best_alt_model)
+# This time 2013 is a slightly better candidate than 2012, hence 2013 being used in best_alt_model not 2012. 
+# Another example: France, males
+###
+example_df <- 
+  hmd_ex_selected_countries_with_synth %>% 
+      filter(x == 0) %>% 
+      filter(sex == "male") %>% 
+      filter(code == "FRATNP") %>% 
+      filter(year >= 1979)
+example_df <- 
+  example_df %>% 
+    arrange(year) %>% 
+    mutate(delta_ex = ex - lag(ex))
+grid_search_df <- tibble(
+  tau_candidate = 1982:2015
+) %>% 
+  mutate(
+    model_alt = map(tau_candidate, run_alt_with_given_tau, df = example_df)
+  ) %>% 
+  mutate(
+    aic = map_dbl(model_alt, AIC)
+  )
+grid_search_df %>% 
+  ggplot(aes(tau_candidate, aic)) + 
+  geom_point()
+best_alt_model <- example_df %>% 
+  mutate( T_param = ifelse(year < 2012, FALSE, TRUE)) %>% 
+  lm(delta_ex ~ T_param, data = .)
+summary(best_alt_model)
+null_model <- example_df %>% 
+  lm(delta_ex ~ 1, data = .)
+summary(null_model)
+anova(null_model, best_alt_model)
+# Here 2015 has the lowest value, but this might be an artefact of the data period covered. 
+# We can also see that 2012 is the next best candidate.
+## Generalising and automating. 
+# We've manually found the best break points, and compared the best alt with the standard null model 
+# for each of these. What we should do now is standardise the process so it 'works' automatically 
+# for each of the population subgroups. 
+# As with creating synthetic germany, the grid/line search approach shown above should work, 
+# but I'm going to try to use optim nonetheless for pedagogic and perfectionist(/masochistic) reasons
+# optim uses some starting conditions (and sometimes other conditions) to use an algorithm 
+# to find an input or group of inputs that give the best possible output from a function that takes the 
+# input/inputs. 
+# best can either mean the lowest or the highest achievable value. When trying to minimise errors
+# (as with model specifications) that usually means trying to get the minimum value. 
+# So, the input to the function will be the tau value. 
+# The tau value range should have some reasonable limits. These can be specified 
+# for some kinds of algorithm optim uses.
+# the limits should also be determined by the data. I don't think the tau should be 
+# set at the first or last observed year, as it doesn't make sense to speak of a 'trend' 
+# from a single observation. This thinking generalises to at least two observations too. 
+# So, that implies there should be a 'buffer' within which the optim function will look 
+# for possible tau values. This should be an adjustable parameter for passing for 
+# optim, but not the parameter for optim to determine. 
+# There's a special type of optim algorithm for bounded optimisation like this.
+# 'L-BFGS-B'. This can be selected using the method argument, and also 
+# requires the lower and upper arguments be specified, for the lower 
+# and upper values to search within respectively. 
+# so, we need to write a function a bit like the following
+get_best_tau_from_optim <- function(df, buffer = 2, what = c("tau", "optim")){
+  # We can put in some data validation checks too 
+  
+  what <- match.arg(what)
+  
+  years <- df$year 
+  tau_lower <- min(years) + buffer # the lower bound 
+  tau_upper <- max(years) - buffer # the upper bound
+  tau_start <- (tau_upper + tau_lower) / 2 # start just in the middle 
+  # (This shouldn't matter if the algorithm is robust) 
+  
+  get_result_from_model <- function(par, df, what = c("AIC", "BIC", "model")){
+    # Again, can carry out more validation checks 
+    what <- match.arg(what)
+    
+    tau <- par[["tau"]] # This is how parameters are packed up by optim
+    model <-
+      df %>% 
+        arrange(year) %>% 
+        mutate(delta_ex = ex - lag(ex)) %>% 
+        filter(!is.na(delta_ex)) %>% 
+        mutate(T_param = ifelse(year < tau, FALSE, TRUE)) %>% 
+        lm(delta_ex ~ T_param, data = .)
+    if (what == "model") {return(model)      }
+    if (what == "BIC")   {return(BIC(model)) }
+    if (what == "AIC")   {return(AIC(model)) }
+    
+    # NULL should never be returned! If it has something's gone wrong!
+    NULL
+  }
+  
+  optim_obj <- 
+    optim(
+      par = list(tau = tau_start), 
+      fn = get_result_from_model, 
+      method = "L-BFGS-B",
+      lower = tau_lower,
+      upper = tau_upper,
+      df = df
+    )
+  # Need to make the result dependent on the what argument
+  
+  if (what == "tau") {return(optim_obj[["par"]])}
+  else if (what == "optim"){ return(optim_obj) }
+  
+  # Again, the following should never be triggered
+  NULL
+}
+# Let's see if this now works in the functional programming context, using 
+# nest and tibble elements 
+hmd_ex_selected_countries_with_synth %>%
+  filter(year >= 1979) %>% 
+  group_by(code, x, sex) %>% 
+  nest() %>% 
+  mutate(
+    best_tau = map_dbl(data, get_best_tau_from_optim)
+  )
+# I think this is getting stuck on local optima, so instead maybe 
+# the more exhaustive search should be used after all! 
+# There are two alternative approaches: 
+# 1) Use an exhaustive grid search approach 
+# 2) Use an algorithm which is less likely to get stuck in local optima
+# The first approach is much more sensible, but the second might be a cool
+# stretch goal as well! 
+# let's use a heavily modified version of the above function to do the grid search
+get_best_tau_from_gridsearch <- function(df, buffer = 2, what = c("best", "all")){
+  # We can put in some data validation checks too 
+  
+  what <- match.arg(what)
+  
+  years <- df$year 
+  tau_lower <- min(years) + buffer # the lower bound 
+  tau_upper <- max(years) - buffer # the upper bound
+  tau_searchrange <- tau_lower:tau_upper
+  get_result_from_model <- function(tau, df, what = c("AIC", "BIC", "model")){
+    # Again, can carry out more validation checks 
+    what <- match.arg(what)
+    
+    model <-
+      df %>% 
+        arrange(year) %>% 
+        mutate(delta_ex = ex - lag(ex)) %>% 
+        filter(!is.na(delta_ex)) %>% 
+        mutate(T_param = ifelse(year < tau, FALSE, TRUE)) %>% 
+        lm(delta_ex ~ T_param, data = .)
+    if (what == "model") {return(model)      }
+    if (what == "BIC")   {return(BIC(model)) }
+    if (what == "AIC")   {return(AIC(model)) }
+    
+    # NULL should never be returned! If it has something's gone wrong!
+    NULL
+  }
+  
+  search_df <- tibble(
+    tau = tau_searchrange
+  ) %>% 
+    mutate(aic = map_dbl(tau, get_result_from_model, df = df))
+  
+  if (what == "all") {return(search_df)}
+  
+  if (what == "best") {
+    out <- 
+      search_df %>% 
+        filter(aic == min(aic)) %>% 
+        pull(tau)
+    return(out)
+  }
+  # Again, the following should never be triggered
+  NULL
+}
+compare_best_breakmodel_with_null <- 
+  hmd_ex_selected_countries_with_synth %>%
+    filter(year >= 1979) %>% 
+    group_by(code, x, sex) %>% 
+    nest() %>% 
+    mutate(
+      best_tau = map_dbl(data, get_best_tau_from_gridsearch)
+    ) %>% 
+    mutate(
+      model_null = map(
+        data, 
+        ~ .x %>% 
+          arrange(year) %>% 
+          mutate(delta_ex = ex - lag(ex)) %>% 
+          filter(!is.na(delta_ex)) %>% 
+          lm(delta_ex ~ 1, data = .)
+      )
+    ) %>% 
+    mutate(
+      model_alt = map2(
+        best_tau, data,
+      ~ .y %>% 
+        arrange(year) %>% 
+        mutate(delta_ex = ex - lag(ex)) %>% 
+        filter(!is.na(delta_ex)) %>% 
+        mutate(T_param = ifelse(year < .x, FALSE, TRUE)) %>% 
+        lm(delta_ex ~ T_param, data = .)
+      )
+    )
+tmp <- compare_best_breakmodel_with_null %>% 
+  mutate(
+    aic_alt  = map_dbl(model_alt, AIC),
+    aic_null = map_dbl(model_null, AIC)
+  ) %>% 
+  mutate(
+    alt_preferred = map2_lgl(aic_alt, aic_null, ~ifelse(.x < .y, TRUE, FALSE))
+  ) %>% 
+  mutate(
+    anova_results = map2(model_alt, model_null, anova)
+  ) %>% 
+  mutate(
+    ftest_pval = map_dbl(anova_results, ~.[2,6]),
+    stat_sig_preference = ftest_pval < 0.05
+  )
+
+
+# Now let's finish with the most unneccesarily complicated variant: using a different algorithm in 
+# optim which will allow local minima to be escaped. This is the simulated annealing method 
+# (method = "SANN") which is based on physics models. Unfortunately this is not a bounded algoritm,
+# i.e. does not take values within limits, so instead the parameter passed to it has to be 
+# converted and deconverted from a bounded range using a link function. 
+# This can be done with a modification of the sigmoid function, which shifts the transformed 
+# value from the range 0-1 to the range lower_tau-upper_tau. 
+# Let's build up this function as follows: 
+# sigmoid_shift <- function(x, lower = 0, upper = 1){
+#   (upper - lower) / (1 + exp(-x)) + lower
+# }
+# # 
+# curve(sigmoid_shift, -3, 3) # basic sigmoid 
+# 
+# sigmoid_shift2 <- function(x){
+#   sigmoid_shift(x = x, lower = 1981, upper = 2015)
+# }
+# 
+# curve(sigmoid_shift2, -3, 3)
+# So this will work as a transformation from an unbounded space (x) to a 
+# bounded space (f(x))
+# We'll also need to reverse the operation 
+# # After a bit of pen-and-paper algebra...
+# sigmoid_unshift <- function(z, lower = 0, upper = 1){
+#   -log((upper - lower) / (z - lower) -1)
+# }
+# 
+# Let's double check...
+#  
+# sigmoid_shift(-4, lower = 1982, upper = 2015) %>% 
+#   sigmoid_unshift(lower = 1982, upper = 2015)
+# 
+# 
+# 
+# get_best_tau_from_optim_sann <- function(df, buffer = 2, what = c("tau", "tau_z", "optim")){
+#   # We can put in some data validation checks too 
+#   sigmoid_shift <- function(x, lower = 0, upper = 1){
+#     (upper - lower) / (1 + exp(-x)) + lower
+#   }
+#  
+#   sigmoid_unshift <- function(z, lower = 0, upper = 1){
+#   -log((upper - lower) / (z - lower) -1)
+#   } 
+#   
+#   
+#   what <- match.arg(what)
+#   
+#   years <- df$year 
+#   tau_lower <- min(years) + buffer # the lower bound 
+#   tau_upper <- max(years) - buffer # the upper bound
+#   # tau_start <- (tau_upper + tau_lower) / 2 # start just in the middle 
+#   # (This shouldn't matter if the algorithm is robust) 
+#   
+#   get_result_from_model <- function(par, df, what = c("AIC", "BIC", "model")){
+#     # Again, can carry out more validation checks 
+#     what <- match.arg(what)
+#     
+#     tau_z <- par[["tau_z"]] # This is how parameters are packed up by optim
+#     tau   <- sigmoid_shift(tau_z, lower = tau_lower, upper = tau_upper)
+#     
+#     model <-
+#       df %>% 
+#         arrange(year) %>% 
+#         mutate(delta_ex = ex - lag(ex)) %>% 
+#         filter(!is.na(delta_ex)) %>% 
+#         mutate(T_param = ifelse(year < tau, FALSE, TRUE)) %>% 
+#         lm(delta_ex ~ T_param, data = .)
+# 
+#     if (what == "model") {return(model)      }
+#     if (what == "BIC")   {return(BIC(model)) }
+#     if (what == "AIC")   {return(AIC(model)) }
+#     
+#     # NULL should never be returned! If it has something's gone wrong!
+#     NULL
+#   }
+# 
+#   optim_obj <- 
+#     optim(
+#       par = list(tau_z = 0), 
+#       fn = get_result_from_model, 
+#       method = "SANN",
+#       df = df
+#     )
+# 
+#   # Need to make the result dependent on the what argument
+#   
+#   if (what == "tau") {return(sigmoid_shift(optim_obj[["par"]], lower = tau_lower, upper = tau_upper))}
+#   if (what == "tau_z") {return(optim_obj[["par"]])}  
+#   else if (what == "optim"){ return(optim_obj) }
+#   
+#   # Again, the following should never be triggered
+#   NULL
+# }
+# 
+# 
+# sann_estimates <- 
+#   hmd_ex_selected_countries_with_synth %>%
+#     filter(year >= 1979) %>% 
+#     group_by(code, x, sex) %>% 
+#     nest() %>% 
+#     mutate(
+#       best_tau = map_dbl(data, get_best_tau_from_optim_sann)
+#     )
+# 
+# # This takes ABSOLUTELY AGES, and really is the sledgehammer-to-crack
+# # -a-nut approach to use only as a last resort. #
+# # However if you ever do have a complex and non-finite fitness 
+# # surface to try to optimise, and it also requires searching 
+# # over a bounded area, then this is how you can do it! 
+```
+
+
+### Table of countries breakpoints with statistical significace
+
+Next, we display a table with those countries where the breakpoint shows as statistically significant (at p value <0.05) compared to the null, where best_tau is the year.
+
+```{r}
+stat_sig_table <- select(tmp, code, x, sex, best_tau, ftest_pval, stat_sig_preference) %>% arrange(ftest_pval)
+
+#arrange(stat_sig_table, ftest_pval)
+
+view(stat_sig_table)
+
+colnames(stat_sig_table) = c("Country", "Age", "Sex", "Best_Tau", "F Test P Value", "Statistically significant")
+
+
+
+  #filter(stat_sig_preference==TRUE) %>% 
+  
+#using flextable
+myft <- flextable(stat_sig_table)
+myft <- theme_vanilla(myft)
+
+# #myft <- flextable(stat_sig_table) %>%
+#   compose(j = "Statistically significant",
+#           value = as_paragraph(
+#             as_chunk("TRUE",
+#                      props = fp_text_default(color = "#C32900", bold = TRUE))))
+
+myft
+```
+
+
+```{r}
+example_df <- 
+  hmd_ex_selected_countries_with_synth %>% 
+      filter(x == 0) %>% 
+      filter(sex == "male") %>% 
+      filter(code == "FRATNP") %>% 
+      filter(year >= 1979)
+example_df <- 
+  example_df %>% 
+    arrange(year) %>% 
+    mutate(delta_ex = ex - lag(ex))
+grid_search_df <- tibble(
+  tau_candidate = 1982:2015
+) %>% 
+  mutate(
+    model_alt = map(tau_candidate, run_alt_with_given_tau, df = example_df)
+  ) %>% 
+  mutate(
+    aic = map_dbl(model_alt, AIC)
+  )
+grid_search_df %>% 
+  ggplot(aes(tau_candidate, aic)) + 
+  geom_point()
+```
+
+
+# Discussion
+
+- **Limitations**: fewer years for comparison in 2010s for some nations; comparing different time periods will provide different results e.g. New Labour years in E&W.
+
+# Appendix A: Construction of Synthetic Germany 
+
+- Add further details here. 
+
+# Bibliography
+
+
