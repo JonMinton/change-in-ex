@@ -498,7 +498,7 @@ m_e65_ENW + labs(y = "Annual change in e65", title = "England and Wales", subtit
       mutate(delta_ex = ex - lag(ex)) %>%
     ungroup %>%
     filter(year >= 1979) %>%
-    ggplot(aes(x = year, y = delta_ex)) + geom_point() +
+    ggplot(aes(x = year, y = delta_ex)) + geom_point(size=0.3) +
    geom_line() +
    geom_hline(yintercept = 0) +
     stat_smooth(mapping = aes(colour = sex)) +
@@ -591,7 +591,7 @@ f_e0_SCO + labs(y = "Annual change in e0", title = "Scotland", subtitle = "Life 
       mutate(delta_ex = ex - lag(ex)) %>%
     ungroup %>%
     filter(year >= 1979) %>%
-    ggplot(aes(x = year, y = delta_ex)) + geom_point() +
+    ggplot(aes(x = year, y = delta_ex)) + geom_point(size=0.3) +
    geom_line() +
    geom_hline(yintercept = 0) +
     stat_smooth(mapping = aes(colour = sex)) +
@@ -682,7 +682,7 @@ f_e0_FRA + labs(y = "Annual change in e0", title = "France", subtitle = "Life ex
       mutate(delta_ex = ex - lag(ex)) %>%
     ungroup %>%
     filter(year >= 1979) %>%
-    ggplot(aes(x = year, y = delta_ex)) + geom_point() +
+    ggplot(aes(x = year, y = delta_ex)) + geom_point(size=0.3) +
    geom_line() +
    geom_hline(yintercept = 0) +
     stat_smooth(mapping = aes(colour = sex)) +
@@ -773,7 +773,7 @@ f_e0_ESP + labs(y = "Annual change in e0", title = "Spain", subtitle = "Life exp
       mutate(delta_ex = ex - lag(ex)) %>%
     ungroup %>%
     filter(year >= 1979) %>%
-    ggplot(aes(x = year, y = delta_ex)) + geom_point() +
+    ggplot(aes(x = year, y = delta_ex)) + geom_point(size=0.3) +
    geom_line() +
    geom_hline(yintercept = 0) +
     stat_smooth(mapping = aes(colour = sex)) +
@@ -866,7 +866,7 @@ f_e0_ITA + labs(y = "Annual change in e0", title = "Italy", subtitle = "Life exp
       mutate(delta_ex = ex - lag(ex)) %>%
     ungroup %>%
     filter(year >= 1979) %>%
-    ggplot(aes(x = year, y = delta_ex)) + geom_point() +
+    ggplot(aes(x = year, y = delta_ex)) + geom_point(size=0.3) +
    geom_line() +
    geom_hline(yintercept = 0) +
     stat_smooth(mapping = aes(colour = sex)) +
@@ -958,7 +958,7 @@ f_e0_DEUTS + labs(y = "Annual change in e0", title = "Germany: Synthetic", subti
       mutate(delta_ex = ex - lag(ex)) %>%
     ungroup %>%
     filter(year >= 1979) %>%
-    ggplot(aes(x = year, y = delta_ex)) + geom_point() +
+    ggplot(aes(x = year, y = delta_ex)) + geom_point(size=0.3) +
    geom_line() +
    geom_hline(yintercept = 0) +
     stat_smooth(mapping = aes(colour = sex)) +
@@ -1049,7 +1049,7 @@ f_e0_DEUTE + labs(y = "Annual change in e0", title = "Germany: East", subtitle =
       mutate(delta_ex = ex - lag(ex)) %>%
     ungroup %>%
     filter(year >= 1979) %>%
-    ggplot(aes(x = year, y = delta_ex)) + geom_point() +
+    ggplot(aes(x = year, y = delta_ex)) + geom_point(size=0.3) +
    geom_line() +
    geom_hline(yintercept = 0) +
     stat_smooth(mapping = aes(colour = sex)) +
@@ -1140,7 +1140,7 @@ f_e0_DEUTW + labs(y = "Annual change in e0", title = "Germany: West", subtitle =
       mutate(delta_ex = ex - lag(ex)) %>%
     ungroup %>%
     filter(year >= 1979) %>%
-    ggplot(aes(x = year, y = delta_ex)) + geom_point() +
+    ggplot(aes(x = year, y = delta_ex)) + geom_point(size=0.3) +
    geom_line() +
    geom_hline(yintercept = 0) +
     stat_smooth(mapping = aes(colour = sex)) +
