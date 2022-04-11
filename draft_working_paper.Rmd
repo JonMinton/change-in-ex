@@ -53,8 +53,10 @@ The following countries are included in the comparison:
 
 ```{r, echo=FALSE}
 # load packages
-pacman::p_load(knitr, here, tidyverse, flextable) # using flextable instead of gt. It seems to be better 
-# developed, more commonly used, and has more clearly labelled function names.
+pacman::p_load(knitr, here, segmented, tidyverse)
+
+
+
 # load data 
 hmd_lt <- read_rds(here("data", "lifetables.rds"))
 ```
@@ -271,7 +273,7 @@ change_in_ex_selected_countries
 
 ### Changes in life expectancy at birth 
 
-- [ ] make smoother lines coloured by sex
+- [X] make smoother lines coloured by sex
 - [X] use consistent colours for all graphs showing separate sex results
 
 
@@ -298,7 +300,6 @@ change_in_ex_selected_countries %>%
 
 ### Changes in life expectancy at age 65 
 
-- [ ] Use slightly stronger (and consistent) colours for sex smoother lines
 
 ```{r, echo = FALSE, warning=FALSE, message = FALSE, fig.height=8, fig.width=8}
 change_in_ex_selected_countries %>% 
@@ -511,6 +512,7 @@ m_e65_ENW + labs(y = "Annual change in e65", title = "England and Wales", subtit
 ```
 
 ### Scotland
+
 ```{r, echo = FALSE, warning=FALSE, message = FALSE}
 #SCO female at birth
 f_e0_SCO <- 
@@ -1176,13 +1178,9 @@ hmd_ex_selected_countries_with_synth %>%
   filter(code == "GBRTENW") %>% 
   filter(x == 0) %>% 
   select(sex, decade, cell_contents) %>% 
-  spread(decade, cell_contents) %>% 
+  spread(decade, cell_contents) #%>% 
 #  write.csv("clipboard")
-  flextable() %>%
-  # Want to make the header row bold
-  vline(j = 1, part = "all") %>%
-  set_caption(caption = "Average improvement in life expectancy by decade") 
-  
+
 ```
 
 ### Are the differences by decade statistically significant? 
@@ -1297,13 +1295,13 @@ source(here("R", "breakpoint_functions.R"))
 
 # Let's see if this now works in the functional programming context, using 
 # nest and tibble elements 
-hmd_ex_selected_countries_with_synth %>%
-  filter(year >= 1979) %>% 
-  group_by(code, x, sex) %>% 
-  nest() %>% 
-  mutate(
-    best_tau = map_dbl(data, get_best_tau_from_optim)
-  )
+# hmd_ex_selected_countries_with_synth %>%
+#   filter(year >= 1979) %>% 
+#   group_by(code, x, sex) %>% 
+#   nest() %>% 
+#   mutate(
+#     best_tau = map_dbl(data, get_best_tau_from_optim)
+#   )
 # I think this is getting stuck on local optima, so instead maybe 
 # the more exhaustive search should be used after all! 
 # There are two alternative approaches: 
@@ -1319,7 +1317,8 @@ compare_best_breakmodel_with_null <-
     group_by(code, x, sex) %>% 
     nest() %>% 
     mutate(
-      best_tau = map_dbl(data, get_best_tau_from_gridsearch)
+      best_tau = map_dbl(data, get_best_tau_from_gridsearch),
+      all_taus = map(data, get_best_tau_from_gridsearch, what = "all")
     ) %>% 
     mutate(
       model_null = map(
@@ -1341,8 +1340,7 @@ compare_best_breakmodel_with_null <-
         mutate(T_param = ifelse(year < .x, FALSE, TRUE)) %>% 
         lm(delta_ex ~ T_param, data = .)
       )
-    )
-tmp <- compare_best_breakmodel_with_null %>% 
+    ) %>% 
   mutate(
     aic_alt  = map_dbl(model_alt, AIC),
     aic_null = map_dbl(model_null, AIC)
@@ -1361,6 +1359,112 @@ tmp <- compare_best_breakmodel_with_null %>%
 
 
 ```
+
+Let's now try to summarise the above results intelligently. 
+
+We want to know: 
+
+- [ ] Best year
+- [ ] Whether stat sig over null 
+- [ ] Estimate before break
+- [ ] Estimate after break 
+
+Let's take the object above then get this info. 
+
+```{r}
+compare_best_breakmodel_with_null %>% 
+  mutate(population = glue::glue("{code}_{sex}_{x}")) %>% 
+  ggplot(aes(best_tau, fct_reorder(population, best_tau), colour = stat_sig_preference)) + 
+  geom_point()
+
+
+```
+I'm now a bit concerned by how many picked 2015. Is this an artefact of when the data finished?
+
+To test this further I've now saved AIC by proposed year so let's look at how clear a 'winner' is for each population 
+
+```{r}
+compare_best_breakmodel_with_null %>% 
+  select(code, x, sex, best_tau, all_taus, ftest_pval) %>% 
+  unnest(all_taus) %>% 
+  ungroup() %>% 
+  mutate(population = glue::glue("{code}_{x}_{sex}")) %>% 
+  mutate(
+    ftest_cat = case_when(
+      ftest_pval < 0.01 ~ "<0.01",
+      between(ftest_pval, 0.01, 0.05) ~ "0.01-0.05",
+      between(ftest_pval, 0.05, 0.10) ~ "0.05-0.10",
+      TRUE                            ~ "Not Stat. Sig."
+    ),
+    ftest_cat = factor(ftest_cat, 
+      levels = c("<0.01", "0.01-0.05", "0.05-0.10", "Not Stat. Sig."),
+      ordered = TRUE
+    )
+  ) %>% 
+  ggplot(aes(tau, aic)) +
+  geom_line() + geom_point(aes(colour = ftest_cat, alpha = tau == best_tau)) + 
+  facet_wrap(~population, scales = "free_y") +
+  scale_colour_manual(
+    values = c(
+      "<0.01" = "darkred", 
+      "0.01-0.05"  = "red", 
+      "0.05-0.10" = "orange", 
+      "Not Stat. Sig." = "lightblue"
+      )
+  ) + 
+  scale_alpha_manual(values = c(`FALSE` = 0, `TRUE` = 1), guide = "none") +
+  labs(
+    title = "Penalised fit (AIC) against proposed changepoint year, various population",
+    subtitle = "Best fit identified indicate with a point, whose colour indicates statistical significance of changepoint model compared with Null model",
+    colour = "Statistical\nsignificance", 
+    x = "Year proposed",
+    y = "AIC (lower is better)"
+  )
+```
+
+I think this is a fairly complex visualisation, but hopefully usable either in the main paper or (more likely) supplementary material. 
+
+Here's a table attempting to summarise (subjectively) the above graphs:
+
+
+| **Population**    | **x** | **Sex** | **Main Breakpoint (Stat sig.)** | **Other possible breakpoints** |
+|-------------------|-------|---------|---------------------------------|--------------------------------|
+| East Germany      | 0     | male    | 1991 **                         | No                             |
+| East Germany      | 0     | female  | 2005 **                         | 2015                           |
+| East Germany      | 65    | male    | 1991 **                         | No                             |
+| East Germany      | 65    | female  | 1991 **                         | No                             |
+| Germany           | 0     | male    | 2015 **                         | 2007ish                        |
+| Germany           | 0     | female  | 2007 **                         | 2005-2008                      |
+| Germany           | 65    | male    | 2015 **                         | No                             |
+| Germany           | 65    | female  | 2015 *                          | 2005-2008                      |
+| Synthetic Germany | 0     | male    | 2015 **                         | Weak 2007                      |
+| Synthetic Germany | 0     | female  | 2007 **                         | 2005-2008, 2015                |
+| Synthetic Germany | 65    | male    | 2015 **                         | No                             |
+| Synthetic Germany | 65    | female  | 2015 *                          | Weak 2005-2007                 |
+| West Germany      | 0     | male    | 2015 **                         | Weak 2007                      |
+| West Germany      | 0     | female  | 1988 **                         | 2005-2008ish                   |
+| West Germany      | 65    | male    | 2015 **                         | No                             |
+| West Germany      | 65    | female  | 2015 *                          | 2008 ish (Weak)                |
+| Spain             | 0     | male    | 1983 *                          | No                             |
+| Spain             | 0     | female  | 1983 *                          | No                             |
+| Spain             | 65    | male    | 2000 (NS)                       | 2015                           |
+| Spain             | 65    | female  | 2014 (NS)                       | 1983?                          |
+| France            | 0     | male    | 2015 (NS)                       | ?                              |
+| France            | 0     | female  | 2015 (NS)                       | ?                              |
+| France            | 65    | male    | 2015 **                         | No                             |
+| France            | 65    | female  | 2015 *                          | No                             |
+| Scotland          | 0     | male    | 2015 ***                        | No                             |
+| Scotland          | 0     | female  | 1980 *                          | 2015 (Strong)                  |
+| Scotland          | 65    | male    | 1994 (NS)                       | No?                            |
+| Scotland          | 65    | female  | 1981 (NS)                       | No                             |
+| England & Wales   | 0     | male    | 2013 ***                        | 2012-2015ish                   |
+| England & Wales   | 0     | female  | 2012 **                         | Around 2015                    |
+| England & Wales   | 65    | male    | 2012 *                          | 2015                           |
+| England & Wales   | 65    | female  | 2012 (NS)                       | 2015                           |
+| Italy             | 0     | male    | 1981 (NS)                       | 2015                           |
+| Italy             | 0     | female  | 2005 (NS)                       | Weak 2015                      |
+| Italy             | 65    | male    | 1984 (NS)                       | 1981                           |
+| Italy             | 65    | female  | 2005 (NS)                       | 1984                           |
 
 
 
@@ -1424,6 +1528,101 @@ segmented_breakpoint_models <-
 segmented_breakpoint_models
 
 
+
+estimate_breakpoint_and_pval_v2 <- function(df){
+  null_mdl <- lm(ex ~ year, data = df) 
+  seg_mdl <- segmented::segmented(null_mdl, seg.Z= ~year, psi = 2010)   
+  anova_diff <- anova(null_mdl, seg_mdl)
+  
+  list(
+    null = null_mdl, 
+    seg = seg_mdl,
+    diff = anova_diff
+  )
+}
+
+segmented_breakpoint_models_v2 <- 
+  hmd_ex_selected_countries_with_synth %>% 
+    filter(year >= 1979) %>% 
+    group_by(code, x, sex) %>% 
+    nest() %>% 
+    mutate(
+      mdl_outputs = map(data, estimate_breakpoint_and_pval_v2)
+    ) %>% 
+    unnest_wider(mdl_outputs) %>% 
+    mutate(
+      ftest_pval = map_dbl(diff, ~.[2,6]),
+      stat_sig_preference = ftest_pval < 0.05
+    ) %>% 
+    mutate(
+      breakpoint = map_dbl(seg, ~.[["psi"]][1,2]),
+      breakpoint_se = map_dbl(seg, ~.[["psi"]][1,3])
+    )
+
+segmented_breakpoint_models_v2
+
+# To check the results are the same more formally
+
+identical(
+  segmented_breakpoint_models %>% 
+    select(
+      code, x, sex, ftest_pval, stat_sig_preference, breakpoint
+    ), 
+  segmented_breakpoint_models_v2 %>% 
+    select(
+      code, x, sex, ftest_pval, stat_sig_preference, breakpoint
+    )
+  )
+
+# Returns FALSE 
+
+# How are they different? 
+models_comparison <- 
+segmented_breakpoint_models %>% 
+  select(code, x, sex, ftest_pval, stat_sig_preference, breakpoint, breakpoint_se) %>% 
+  group_by(code, x, sex) %>% 
+  nest(v1 = c(ftest_pval, stat_sig_preference, breakpoint, breakpoint_se)) %>% 
+  left_join(
+    segmented_breakpoint_models_v2 %>% 
+      select(code, x, sex, ftest_pval, stat_sig_preference, breakpoint, breakpoint_se) %>% 
+      group_by(code, x, sex) %>% 
+      nest(v2 = c(ftest_pval, stat_sig_preference, breakpoint, breakpoint_se))
+  ) %>% 
+  unnest_wider(
+    v1, names_sep = "."
+  ) %>% 
+  unnest_wider(
+    v2, names_sep = "."
+  )
+
+
+# How do the breakpoints and SEs differ? 
+models_comparison %>% 
+  ggplot() + 
+  geom_point(aes(v1.breakpoint, v2.breakpoint))
+
+# There's just one difference. What is it? 
+models_comparison %>% 
+  mutate(bp_diff = v2.breakpoint - v1.breakpoint) %>% 
+  mutate(population = glue::glue("{code}_{x}_{sex}")) %>% 
+  ggplot(aes(bp_diff, fct_reorder(population, bp_diff))) + 
+    geom_point()
+
+# So, the different starting points make a substantive difference only 
+# for FRATNP males, at age 65
+
+# I suspect they some smaller difference for other populations however. Let's 
+# check 
+
+models_comparison %>% 
+  mutate(bp_diff = v2.breakpoint - v1.breakpoint) %>% 
+  mutate(population = glue::glue("{code}_{x}_{sex}")) %>% 
+  filter(population != "FRATNP_65_male") %>% 
+  ggplot(aes(bp_diff, fct_reorder(population, bp_diff))) + 
+    geom_point()
+
+# Yes, there are differences, but they are tiny...
+
 ```
 
 Now I'm going to plot the breakpoints + SEs on the data itself
@@ -1439,9 +1638,86 @@ segmented_breakpoint_models %>%
 
 ```
 
+I'm now going to compare the breakpoints from the segmented package with the best point from the line/gridsearch approach
+
+```{r}
+compare_best_breakmodel_with_null %>% 
+  select(code, x, sex, best_tau, all_taus, ftest_pval) %>% 
+  unnest(all_taus) %>% 
+  ungroup() %>% left_join(
+    segmented_breakpoint_models %>% 
+      select(code, x, sex, bp_ftest_pval = ftest_pval, bp_breakpoint = breakpoint, bp_breakpoint_se = breakpoint_se)
+  ) %>% 
+  mutate(population = glue::glue("{code}_{x}_{sex}")) %>% 
+  mutate(
+    ftest_cat = case_when(
+      ftest_pval < 0.01 ~ "<0.01",
+      between(ftest_pval, 0.01, 0.05) ~ "0.01-0.05",
+      between(ftest_pval, 0.05, 0.10) ~ "0.05-0.10",
+      TRUE                            ~ "Not Stat. Sig."
+    ),
+    ftest_cat = factor(ftest_cat, 
+      levels = c("<0.01", "0.01-0.05", "0.05-0.10", "Not Stat. Sig."),
+      ordered = TRUE
+    )
+  ) %>% 
+  mutate(
+    bp_ftest_cat = case_when(
+      bp_ftest_pval < 0.01 ~ "<0.01",
+      between(bp_ftest_pval, 0.01, 0.05) ~ "0.01-0.05",
+      between(bp_ftest_pval, 0.05, 0.10) ~ "0.05-0.10",
+      TRUE                            ~ "Not Stat. Sig."
+    ),
+    bp_ftest_cat = factor(bp_ftest_cat, 
+      levels = c("<0.01", "0.01-0.05", "0.05-0.10", "Not Stat. Sig."),
+      ordered = TRUE
+    )
+  ) %>% 
+  ggplot(aes(tau, aic)) +
+  geom_line() + 
+  geom_point(aes(colour = ftest_cat, alpha = tau == best_tau)) + 
+  facet_wrap(~population, scales = "free_y") +
+  scale_colour_manual(
+    values = c(
+      "<0.01" = "darkred", 
+      "0.01-0.05"  = "red", 
+      "0.05-0.10" = "orange", 
+      "Not Stat. Sig." = "lightblue"
+      )
+  ) + 
+  geom_vline(
+    aes(
+      xintercept = bp_breakpoint,
+      colour = bp_ftest_cat  
+    )
+  ) + 
+  geom_rect(
+    aes(
+      xmin = bp_breakpoint - 1.96 * bp_breakpoint_se, 
+      xmax = bp_breakpoint + 1.96 * bp_breakpoint_se
+    ),
+      ymin = -Inf, ymax = Inf,
+    alpha = 0.01
+  ) + 
+  scale_alpha_manual(values = c(`FALSE` = 0, `TRUE` = 1), guide = "none") +
+  labs(
+    title = "Penalised fit (AIC) against proposed changepoint year, various population",
+    subtitle = "Best fit identified indicate with a point, whose colour indicates statistical significance of changepoint model compared with Null model",
+    colour = "Statistical\nsignificance", 
+    x = "Year proposed",
+    y = "AIC (lower is better)",
+    caption = "Vertical lines and bands show estimates and 95% CIs from segmented package"
+  )
+```
+
+
 And now for change in ex 
 
-- [ ] Jon to figure out why this doesn't work...
+- [X] Jon to figure out why this doesn't work...
+    - I think it doesn't work because the `segmented` package functions expect the line to be joined up. Instead it looks like the [structchange](https://cran.r-project.org/web/packages/strucchange/index.html) package can be used for more general model specifications. 
+    
+
+
 
 ```{r, eval = FALSE}
 estimate_breakpoint_and_pval_change <- function(df){
@@ -1490,7 +1766,7 @@ segmented_breakpoint_models_change
 
 Next, we display a table with those countries where the breakpoint shows as statistically significant (at p value <0.05) compared to the null, where best_tau is the year.
 
-```{r}
+```{r, eval = FALSE}
 stat_sig_table <- select(tmp, code, x, sex, best_tau, ftest_pval, stat_sig_preference) %>% arrange(ftest_pval)
 
 #arrange(stat_sig_table, ftest_pval)
@@ -1557,3 +1833,127 @@ grid_search_df %>%
 # Bibliography
 
 
+# Dream Graphs 
+
+To finally complete these, without getting distracted/stuck on how to double check and improve upon the underlying data/models 
+
+- [ ] I've finally remembered that I can get the breakpoints by aggregating up the changes, as I've done many times previously! 
+
+## Graph of ex against year, predicted and observed. 
+
+```{r}
+# Start with Scotland, female, 0 
+
+test_data <- compare_best_breakmodel_with_null %>% 
+  filter(code == "GBR_SCO", x == 0, sex == "female") %>% 
+  pluck("data", 1)
+
+test_data %>% 
+  ggplot(aes(year, ex)) + 
+  geom_point()
+
+# Now to get the modelled estimates
+
+compare_best_breakmodel_with_null %>% 
+  filter(code == "GBR_SCO", x == 0, sex == "female") %>% 
+  pluck("model_alt", 1) %>% 
+  broom::tidy()
+
+# So, we want the last year before the breakpoint, then to produce a line that just integrates the (Intercept) term as many years as we want to project forward for. 
+
+# So, let's think of a function that makes a graph, and what inputs it needs 
+
+show_counterfactual_figure <- function(df, best_tau, alt_model){
+  # First we might want to estimate the intercept for the pre-slowdown portion 
+  # while fixing the slope at that estimated by (Intercept) in the delta_ex model 
+  
+  pred_slope <- alt_model %>%  broom::tidy() %>% 
+    filter(term == "(Intercept)") %>% 
+    pluck("estimate")
+  # 
+  pred_slope_after <- alt_model %>% 
+    broom::tidy() %>% 
+    filter(term == "T_paramTRUE") %>% 
+    pluck("estimate")
+   
+  pred_intercept <-  mean(df$ex - pred_slope * df$year)
+  
+  pred_intercept_at_tau <- pred_intercept - pred_slope_after * best_tau
+  
+  # I think I should use geom_area for the after part 
+  df %>% 
+    mutate(
+      y_pred_before = pred_intercept + pred_slope * year,
+      y_pred_after  = pred_intercept_at_tau + (pred_slope + pred_slope_after) * year
+    ) %>% 
+    mutate(
+      y_pred_before = ifelse(year < best_tau, NA, y_pred_before),
+      y_pred_after  = ifelse(year < best_tau, NA, y_pred_after)
+    ) %>% 
+    ggplot() + 
+    geom_point(aes(year, ex)) + 
+    geom_vline(xintercept = best_tau) + 
+    geom_abline(intercept = pred_intercept, slope = pred_slope) + 
+    geom_ribbon(aes(ymax = y_pred_before, ymin = y_pred_after, x = year), alpha = 0.5)
+}
+
+this_df <- compare_best_breakmodel_with_null %>% 
+  filter(code == "GBR_SCO", x == 0, sex == "male") %>% 
+  pluck("data", 1)
+
+this_best_tau <- compare_best_breakmodel_with_null %>% 
+  filter(code == "GBR_SCO", x == 0, sex == "male") %>% 
+  pluck("best_tau")
+
+this_model_alt <- compare_best_breakmodel_with_null %>% 
+  filter(code == "GBR_SCO", x == 0, sex == "male") %>% 
+  pluck("model_alt", 1)
+
+
+show_counterfactual_figure(this_df, this_best_tau, this_model_alt) 
+
+# Now to do for all 
+
+# Let's also label and set axes intelligently 
+
+add_labels_axes <- function(gg, country, start_age, sex, 
+                            ylims = list(
+                                birth = c(70, 95),
+                                x65 = c(0, 25)
+                              )
+                            ){
+  gg + 
+    labs(
+      x = "Year", 
+      y = case_when(
+        start_age == 0  ~ "Life expectancy at birth",
+        start_age == 65 ~ "Life expectancy at age 65",
+        TRUE            ~ NA_character_
+      ),
+      title = glue::glue("Life expectancy in {country}, at age {start_age}, for {sex}s"),
+      subtitle = "Shaded areas show deviation from projected life expectancy before any breakpoint in trend", 
+      caption = "Source: Human Mortality Database"
+    ) + 
+    expand_limits( 
+      y = case_when(
+        start_age == 0 ~ ylims[["birth"]],
+        start_age == 65 ~ ylims[["x65"]],
+        TRUE    ~ c(0, 90)
+      )
+    )
+}
+
+compare_best_breakmodel_with_null %>% 
+  left_join(country_code_lookup) %>% 
+  mutate(
+    ggsegplot = pmap(
+      .l = list(df = data, best_tau = best_tau, alt_model = model_alt),
+      .f = show_counterfactual_figure
+    ),
+    ggsegplot = pmap(.l = list(gg = ggsegplot, country = country, start_age = x, sex = sex), add_labels_axes)
+  ) %>% 
+  mutate(NULL = walk(ggsegplot, print))
+
+  
+
+```
