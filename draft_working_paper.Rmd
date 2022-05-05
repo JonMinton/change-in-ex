@@ -1708,6 +1708,8 @@ compare_best_breakmodel_with_null %>%
     y = "AIC (lower is better)",
     caption = "Vertical lines and bands show estimates and 95% CIs from segmented package"
   )
+
+ggsave("figures/aic_from_gridsearch_and_segmented_bp_estimates.png", height = 20, width = 30, units = "cm", dpi = 150)
 ```
 
 
@@ -1957,3 +1959,95 @@ compare_best_breakmodel_with_null %>%
   
 
 ```
+
+# Another attempt at a simple summary 
+
+It could be we don't get a clear changepoint for some populations because the annual variance as a function of change is particularly large. This would be more an issue for smaller populations than larger populations. The changepoint can therefore be expressed as a standarised unit. 
+
+```{r}
+
+mean_sd_chex <- 
+  hmd_ex_selected_countries_with_synth %>% 
+    filter(code %in% c("DEUTSYNTH", "GBRTENW", "GBR_SCO", "FRATNP", "ITA", "ESP")) %>% 
+    filter(between(year, 1979, 2019)) %>% 
+    filter(x == 0) %>% 
+    group_by(code, sex) %>% 
+    arrange(year) %>% 
+    mutate(ch_ex = ex - lag(ex)) %>% 
+    filter(!is.na(ch_ex)) %>% 
+    summarise(
+      mean_chex = mean(ch_ex),
+      sd_chex   = sd(ch_ex)
+    ) %>% 
+    mutate(b = mean_chex / sd_chex) %>% 
+    ungroup() %>% 
+    arrange(desc(mean_chex)) 
+
+mean_sd_chex
+
+# Now to compare with the changepoint model 
+
+get_chpt_coeffs <- function(x){
+  tidied_coeffs <- broom::tidy(x)
+  
+  tibble(
+    mean_chex_before = tidied_coeffs$estimate[1],
+    sd_chex_before   = tidied_coeffs$std.error[1],
+    mean_chex_after  = tidied_coeffs$estimate[2],
+    sd_chex_after    = tidied_coeffs$std.error[2]
+  )
+}
+
+broke_unbroke <- 
+  mean_sd_chex %>% 
+    left_join(
+      compare_best_breakmodel_with_null %>% 
+        ungroup() %>% 
+        filter(x == 0) %>% 
+        select(code, sex, best_tau, model_alt, ftest_pval) %>% 
+        mutate(coeffs = map(model_alt, get_chpt_coeffs)) %>% 
+        unnest(coeffs) %>% 
+        select(-model_alt) 
+    ) %>% 
+    mutate(
+      ch_as_ratio_of_mean_chex = mean_chex_after / mean_chex,
+      pos_chex_after = mean_chex_before + mean_chex_after
+    ) 
+
+
+# now to visualise in a simple way 
+
+expand_grid(
+  year = 1980:2019,
+  broke_unbroke
+  ) %>% 
+  mutate(
+    broke_val = if_else(year < best_tau, mean_chex_before, mean_chex_before + mean_chex_after)
+  ) %>% 
+  left_join(
+    hmd_ex_selected_countries_with_synth %>% 
+      filter(code %in% c("DEUTSYNTH", "GBRTENW", "GBR_SCO", "FRATNP", "ITA", "ESP")) %>% 
+      filter(between(year, 1979, 2019)) %>% 
+      filter(x == 0) %>% 
+      group_by(code, sex) %>% 
+      arrange(year) %>% 
+      mutate(ch_ex = ex - lag(ex)) %>% 
+      filter(!is.na(ch_ex)) %>% 
+      ungroup() %>% 
+      select(code, year, sex, ch_ex)
+  ) %>% 
+  ggplot(aes(year)) +
+  geom_hline(aes(yintercept = mean_chex)) + 
+  geom_hline(yintercept = 0, size = 1.3) + 
+  facet_grid(code ~ sex) +
+  geom_ribbon(aes(ymin = mean_chex - sd_chex, ymax = mean_chex + sd_chex), alpha = 0.2) + 
+  geom_ribbon(aes(ymin = mean_chex - 2 * sd_chex, ymax = mean_chex + 2 * sd_chex), alpha = 0.2) + 
+  expand_limits(y = 0) + 
+  geom_step(aes(y = broke_val, alpha = 1 - ftest_pval, linetype = ftest_pval < 0.05), colour = "red") + 
+  geom_point(aes(y = ch_ex)) +
+  scale_alpha_continuous(range = c(0, 1)) + 
+  scale_linetype_manual(values = c("FALSE" = "dotted", "TRUE" = "solid")) + 
+  guides(alpha = "none", linetype = "none")
+  
+```
+
