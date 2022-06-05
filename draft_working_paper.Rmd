@@ -542,6 +542,15 @@ segmented_breakpoints_models %>%
 
 ```
 
+
+I want to save segmented_breakpoints_models so I can explore it in an app 
+
+```{r}
+write_rds(segmented_breakpoints_models, here("apps", "compare_cps_and_bps", "data", "segmented_models.rds"))
+
+```
+
+
 Let's visualise 
 
 ```{r}
