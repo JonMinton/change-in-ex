@@ -1,0 +1,13 @@
+name: compare_cps_and_bps
+title: compare_cps_and_bps
+username:
+account: datascapes
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 6443972
+bundleId: 5984723
+url: https://datascapes.shinyapps.io/compare_cps_and_bps/
+when: 1654589771.91703
+lastSyncTime: 1654589771.91704
+asMultiple: FALSE
+asStatic: FALSE
