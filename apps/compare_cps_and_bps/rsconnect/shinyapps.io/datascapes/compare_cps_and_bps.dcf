@@ -5,9 +5,9 @@ account: datascapes
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 6443972
-bundleId: 5984723
+bundleId: 5988740
 url: https://datascapes.shinyapps.io/compare_cps_and_bps/
-when: 1654589771.91703
-lastSyncTime: 1654589771.91704
+when: 1654685067.31272
+lastSyncTime: 1654685067.31279
 asMultiple: FALSE
 asStatic: FALSE

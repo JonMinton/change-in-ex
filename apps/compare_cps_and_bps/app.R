@@ -1,6 +1,7 @@
 library(tidyverse)
 library(here)
 library(shiny)
+library(segmented)
 
 # Define project directories 
 #projdir <- here("apps", "compare_cps_and_bps")
@@ -170,7 +171,7 @@ server <- function(input, output) {
       get_relevant_segmods() %>% 
       ggplot(aes(year, ex_prime, group = factor(num_bp), colour = factor(num_bp), size = factor(num_bp), linetype = bic_rank, alpha = bic_rank)) +
       geom_line() +
-      facet_grid(x ~ sex) +
+      facet_grid(sex ~ x) +
       geom_hline(yintercept = 0) +
       labs(
         x = "year", 

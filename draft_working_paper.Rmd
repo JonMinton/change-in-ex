@@ -3,7 +3,11 @@
 title: "How do changes in ex vary between countries?"
 author: "Jon Minton, Lucinda Hiam"
 date: "22/02/2022"
-output: word_document
+output:
+  html_document:
+    df_print: paged
+    always_allow_html: yes
+  word_document: default
 ---
 
 # To dos
@@ -1037,7 +1041,7 @@ write_rds(hmd_ex_selected_countries_with_synth, here("apps", "compare_cps", "dat
 
 I would like to plot the above with the data too, and to plot these as figures
 
-```{r}
+```{r eval = FALSE}
 
 # Let's start with just a single population, and the figure created for England & Wales at age 0
 
@@ -1097,6 +1101,42 @@ g_path +
 
 
 ```
+# Summary of differences and similarities between segmented approach and changepoint approach
+
+In order to compare the results of the two modelling approaches, an R shiny app was built. This app allows each of the countries of interest to be selected, and has three tabs for different displays. These tabs are labelled: 'Segmented', which shows the results of the segmented regression approach; 'Changepoints', which shows the result of the changepoint approach; and both, which compares the best performing segmented and changepoint models. For each country, the results are shown as a two-by-two array, with each sex a different column and each row a different starting age. An option is provided to show the data for the populations, from which the models are derived. 
+
+For both the Segmented and Changepoint displays, polylines are shown for the best performing zero, one or two break models. Of these three models, the model with the lowest BIC is shown as a thick, solid line of full opacity, and the other two lines are shown as broken lines with some level of transparency. This means the polyline corresponding to the best-performing model should be the most prominent of the series of polylines shown. 
+
+
+For England & Wales, the segmented approach identified a two breakpoint model has having the lowest BIC, for all four combinations of sex and starting age. These two breakpoint models suggest a moderate level of annual increase throughout the 1980s and 1990s, a further increase throughout the late 1990s/early 2000s, then a consistent and severe decrease in average annual rate of improvement after around 2012. The corresponding changepoint approach identified a one changepoint model for both males and females from birth, a two changepoint model for males from age 65 years, and a zero changepoint model for females from age 65. Despite these apparent differences between approaches, three of the four changepoint models identify a substantive decrease in the rate of annual improvement around or soon after 2012. Comparison of the best-performing changepoint and segmented model shows that, despite differences in the number of breaks identified, the two types of model tend to show similar patterns over time. 
+
+For Scotland, the segmented model identifies a two breakpoint model as having the lowest BIC for males and females from age 65, and males from birth. Each of these models are qualitatively similar to those for England & Wales, with an increase in the rate of improvement from the late 1990s/early 2000s to around 2012, then a decrease in the rate of improvement thereafter; for males from birth the average annual rate of improvement after around 2013 is estimated to be negative (i.e. declining mortality trends rather than stalling mortality trends). For females from birth a one breakpoint model is identified, which also estimates a negative average improvement (i.e. falling life expectancy) after around 2014. 
+
+Unlike with England & Wales, the changepoint approach leads to results which are not highly concordant with those produced using the segmented approach. This appears to be because, when the two changepoint model is used, the two points identified can be a single year apart, and  for females from birth and males from age 65, they are. Because the data used are for single years, rather than averaged across a number of years, a single point can be substantially higher or lower than the general trend. This can be due to factors such as especially mild winters for years with exceptionally high values, or especially cold winters, or hot summers, or especially infectious and pathogenic strains of infectious disease for years with exceptionally low or negative values. By fitting two changepoints one year apart, the algorithm is in effect identifying and removing the effect of these outlier years from the estimate of the trends either side. For smaller populations like Scotland, these outliers are likely to be more severe than for larger populations like England & Wales, which may explain the identification of such outlier years within the changepoint analysis in Scotland but not England & Wales.    
+
+For Italy, a slowdown in gains in life expectancy is identified by the segmented approach for both sexes from birth, and for females from age 65. This slowdown was estimated to have occurred around 2006. For males from birth, like with England & Wales, a two breakpoint model with a period of faster improvement rates - starting in the late 1990s and ending around 2006 - was also identified. For males from age 65 a zero breakpoint model was preferred. For the changepoint analysis, as with Scotland, a two changepoint specification was preferred to other specifications for females of both starting ages, and for males from age 65. This identified an outlier, of exceptionally fast improvement, in 2004-5, which is adjacent to two years of negative change in 2003-04 and 2005-06. For females, the average trend after this outlier was estimated to be slightly below that of the preceding period, providing some indication of a slowdown in life expectancy around 2005. 
+
+For Spain, the segmented approach shows a modest slowdown in annual improvements after 2012 or slightly later for females of both starting ages, and males from age 65. For males from birth a two breakpoint model is identified, but which identifies a short period in the late 1980s as one of modest decline in life expectancy, then a continued period of improvement thereafter. For the changepoint approach, a zero changepoint model was preferred for both females and males from age 65, whereas for life expectancy from birth a two changepoint model, identifying a single year or short period of years as being of negative or negligible improvement in life expectancy during 1984-85 (females), or much of the 1980s (males), was preferred instead. When comparing the preferred changepoint with breakpoint models, the breakpoint models were generally able to identify a slowdown in the 2010s, whereas the changepoint models were not. 
+
+For Germany (total, synthetic), the preferred segmented models all included a decline in improvement in the latter half of the period considered. For females at both starting ages, and for males from birth, this slowdown was identified to have occurred from around 2006/2007, whereas for males from age 65 to have occurred from 2010. For males from both starting ages, however, two breakpoint models were preferred, with faster rates of improvement identified from the mid 1990s, and the decline in life expectancy gains largely a return to prior trends more common in the 1980s and first half of the 1990s. The results from the changepoint approach are somewhat discordant, through all identify some slowdown in rates of improvement at the end of the series compared with the start. 
+
+For France, the segmented approach estimates a slowdown in life expectancy improvements beginning from around 2011 (female, from age 65) to 2013 (female, from birth). For males two breakpoint models including a slight period of more rapid improvment in the 2000s are preferred, whereas for females either a single breakpoint model (from age 65) or two breakpoints of successive decline in improvement (from birth, the first breakpoint being in 2011-12) were instead identified. The changepoint models indicated a preference for the two changepoint specification, but for all four populations these functioned as outlier detectors, identifying the year 2004-05 as one in which especially rapid improvement occurred (surrounded by two years of especially low improvement); for three of the four changepoint models, a lower rate of average improvement was predicted at the end of the series than at the start, though this slowed rate of improvement was much less than for England & Wales. 
+
+## Discussion relating to above 
+
+Though there are some important differences between the number, position and magnitude of breakpoints and changepoints produced using the two approaches, these largely appear to be explicable in terms of differences between how the breakpoints/changepoints were identified. More specifically, for some populations the changepoint approach identified changepoints that were a single year apart, and correspond to years in which the annual change in values were either especially high or especially low compared with surrounding years. In effect, such changepoint models functioned as a kind of outlier removal system, removing a single value from a longer series in order to allow the gradient/intercept to better fit remaining values. Although this feature was not the intended aim when producing the changepoint analysis, it is clear from looking at annual changes in life expectancy that some annual changes are outliers; especially large annual improvements can be caused by some combination of particularly favourable climactic and infectious disease conditions (relatively mild summers and winters; strains of seasonal influenza with relatively low infectivity and/or pathogenicity, perhaps due to effective vaccination campaigns), and especially modest or negative annual improvements can be caused by the converse. It is important to note that, when looking at unsmoothed annual data, individual years in which life expectancy was lower than in the preceding year are, though infrequent, not uncommon, and may be expected to occur once or more over the full series of years over which the analyses are performed. Furthermore, outlier years can be expected to be more extreme, and more frequent, for smaller populations than larger populations, which appears to explain differences between the best changepoint model for Scotland as compared with England & Wales. Additionally, because of phenomena including forward mortality displacement and acquired immunity, especially 'bad' and 'good' years should not be expected to be independently distributed, but instead (negatively) predictive of each other. More precisely, annual life expectancy series oscillate slightly, rather than are an entirely random process. (This can be demonstrated by showing that ARIMA(1,1,0) models tend to fit the data slightly better than ARIMA(0,1,0) models.)
+
+Regardless, the results taken together provide good evidence that England & Wales experienced a substantial decline in rates of annual mortality improvement (i.e. stalling) after around 2012, as well as fairly good evidence that Scottish populations may have experienced a decline as or more severe contemporaneously. For Scotland, the segmented regression approach implies that life expectancy has fallen, rather than simply stalled, in recent years; however the greater discordance between the results of the segmented and changepoint approaches, and smaller population size for Scotland compared with England & Wales, suggests the estimates for Scotland may be less reliable than those for England & Wales. 
+
+For England & Wales, there appears to be fairly good evidence that two apparently 'competing' interpretations of life expectancy trends are both correct: i.e. that it is both true that the late 1990s and 2000s were a period of unusually rapid average improvements in life expectancy, *and* that after around 2012 there has been a fairly severe stalling of such annual gains. This finding, based on a data series starting 1979-80, is an important contribution to the evidence base supporting the stalling life expectancy hypothesis, because a number of previous analyses used data starting in the late 1990s or early 2000s (EXAMPLES?). Without the longer time series considered here, such earlier analyses would not have been able to discount the possibility that any breakpoint identified around 2010/2 or thereabouts represents a return to earlier trends of more modest improvement, rather than the emergence of a new trend of unusually low longevity gains. 
+
+The analyses presented here also reveal some similarities and differences between England & Wales and other European nations. In particular, we can see that England & Wales was not the only population where the segmented regression approach identified a two breakpoint model as preferable to a zero or one breakpoint model, and where the two breakpoint model identified included both a period of increased, and then a period of decreased, improvement in life expectancy trends as compared with the initial period. When looking at trends in life expectancy change from birth, this jump-then-fall pattern is identified in Italy, Germany (combined) and to a lesser extent France for males, though not for females. And when looking at comparable trends in conditional life expectancy change from age 65, a jump-then-fall pattern is evident in Spain, France, Germany, again for males only. When looking at females, the fall component of this pattern was identified in Germany, Spain, France and Italy, but the jump component seen in males was not; this appears to be the case both for trends in life expectancy from birth, and from age 65. 
+
+Though the presence of a fall component - i.e. a reduced rate of improvement starting in the late 2000s or early 2010s - was identified in these other European nations as well as England & Wales, in England & Wales the extent of the recent fall appears to be more uniform across population subgroups, more consistently identifiable using the two methods applied here, and more severe than in the other European comparator nations. Within Scotland, despite a smaller population and greater discordance between the segmented and changepoint methods, there are indications that life expectancy may be falling, rather than simply 'stalling', with the trend in annual changes in life expectancy from birth being negative for both males and females. (It should also be noted that, for females, the French trends from birth are also close to zero.)
+
+In summary, it appears that patterns in life expectancy change over time are *not qualitatively* dissimilar in England & Wales (and Scotland) as compared with other Continental European nations, but are *quantitatively* dissimilar in terms of both the increase in rate of improvement in trends during the late 1990s and 2000s, and the severity of the *fall* in improvement in trends seen since around 2012. Put more simply, it appears that what has occurred in England & Wales has also occurred in other European nations, only *more so*. This suggests that factors specific to England & Wales (and with more uncertainty, Scotland too) may have exacerbated tendencies -towards both increase and decrease in trends - also present in comparable national populations. 
+
+
 
 
 ```{r}
@@ -1282,7 +1322,7 @@ To finally complete these, without getting distracted/stuck on how to double che
 
 ## Graph of ex against year, predicted and observed. 
 
-```{r}
+```{r eval = FALSE}
 # Start with Scotland, female, 0 
 
 test_data <- compare_best_breakmodel_with_null %>% 
@@ -1403,7 +1443,7 @@ compare_best_breakmodel_with_null %>%
 
 It could be we don't get a clear changepoint for some populations because the annual variance as a function of change is particularly large. This would be more an issue for smaller populations than larger populations. The changepoint can therefore be expressed as a standarised unit. 
 
-```{r}
+```{r eval = FALSE}
 
 mean_sd_chex <- 
   hmd_ex_selected_countries_with_synth %>% 
