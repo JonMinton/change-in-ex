@@ -53,6 +53,7 @@ The following countries are included in the comparison:
    - East Germany (`DEUTE`)
    - West Germany (`DEUTW`)
    - Simulated/Synthetic Germany
+- Netherlands (`NLD`) - last minute addition from Danny
 
 
 ```{r, echo=FALSE}
@@ -76,7 +77,8 @@ country_code_lookup <-
     "ITA", "Italy",
     "GBRTENW", "England & Wales",
     "GBR_SCO", "Scotland",
-    "DEUTSYNTH", "Synthetic Germany"
+    "DEUTSYNTH", "Synthetic Germany",
+    "NLD", "Netherlands"
   )
 
 countries_of_interest <- c(
@@ -88,7 +90,8 @@ countries_of_interest <- c(
   "ITA",
   "DEUTNP",
   "DEUTE", 
-  "DEUTW"
+  "DEUTW",
+  "NLD"
 )
 
 source(here("R", "make_synthetic_germany_functions.R"))
@@ -127,7 +130,7 @@ The following figures show life expectancy at birth and at age 65 for selected n
 ```{r, echo = FALSE, fig.cap = "Life Expectancy at birth"}
 hmd_ex_selected_countries_with_synth %>% 
   left_join(country_code_lookup) %>% 
-  mutate(country = factor(country, levels = c("England & Wales", "Scotland", "East Germany", "West Germany", "Germany", "Synthetic Germany", "Spain", "France", "Italy"))) %>% 
+  mutate(country = factor(country, levels = c("England & Wales", "Scotland", "East Germany", "West Germany", "Germany", "Synthetic Germany", "Spain", "France", "Italy", "Netherlands"))) %>% 
   filter(between(year, 1980, 2020)) %>% 
   filter(x == 0) %>% 
   ggplot(aes(x = year, y = ex, group = sex, colour = sex, linetype = sex)) + 
@@ -147,7 +150,7 @@ hmd_ex_selected_countries_with_synth %>%
 ```{r, echo = FALSE, fig.cap = "Life Expectancy at age 65"}
 hmd_ex_selected_countries_with_synth %>% 
   left_join(country_code_lookup) %>% 
-  mutate(country = factor(country, levels = c("England & Wales", "Scotland", "East Germany", "West Germany", "Germany", "Synthetic Germany", "Spain", "France", "Italy"))) %>% 
+  mutate(country = factor(country, levels = c("England & Wales", "Scotland", "East Germany", "West Germany", "Germany", "Synthetic Germany", "Spain", "France", "Italy", "Netherlands"))) %>% 
   filter(between(year, 1980, 2020)) %>% 
   filter(x == 65) %>% 
   ggplot(aes(x = year, y = ex, group = sex, colour = sex, linetype = sex)) + 
@@ -183,7 +186,7 @@ change_in_ex_selected_countries <-
 change_in_ex_selected_countries %>% 
   filter(x == 0) %>% 
   left_join(country_code_lookup) %>% 
-  mutate(country = factor(country, levels = c("England & Wales", "Scotland", "East Germany", "West Germany", "Germany", "Synthetic Germany", "Spain", "France", "Italy"))) %>% 
+  mutate(country = factor(country, levels = c("England & Wales", "Scotland", "East Germany", "West Germany", "Germany", "Synthetic Germany", "Spain", "France", "Italy", "Netherlands"))) %>% 
   filter(between(year, 1980, 2020)) %>% 
   ggplot(aes(x = year, y = delta_ex, colour=sex)) + 
   geom_point(alpha = 0.2) + 
@@ -207,7 +210,7 @@ change_in_ex_selected_countries %>%
 change_in_ex_selected_countries %>% 
   filter(x == 65) %>% 
   left_join(country_code_lookup) %>% 
-  mutate(country = factor(country, levels = c("England & Wales", "Scotland", "East Germany", "West Germany", "Germany", "Synthetic Germany", "Spain", "France", "Italy"))) %>% 
+  mutate(country = factor(country, levels = c("England & Wales", "Scotland", "East Germany", "West Germany", "Germany", "Synthetic Germany", "Spain", "France", "Italy", "Netherlands"))) %>% 
   filter(between(year, 1980, 2020)) %>% 
   ggplot(aes(x = year, y = delta_ex, colour=sex)) + 
   geom_point(alpha = 0.2) + 
@@ -257,7 +260,7 @@ hmd_ex_selected_countries_with_synth %>%
   filter(term == "(Intercept)") %>% 
   arrange(desc(estimate)) %>%
   left_join(country_code_lookup) %>% 
-  mutate(country = factor(country, levels = c("England & Wales", "Scotland", "East Germany", "West Germany", "Germany", "Synthetic Germany", "Spain", "France", "Italy"))) %>% 
+  mutate(country = factor(country, levels = c("England & Wales", "Scotland", "East Germany", "West Germany", "Germany", "Synthetic Germany", "Spain", "France", "Italy", "Netherlands"))) %>% 
   select(code, country, x, sex, estimate, std.error) %>% 
   mutate(display_label = glue::glue("{country}_{x}_{sex}")) %>% 
   ggplot(aes(estimate, fct_reorder(display_label, estimate))) + 
@@ -332,7 +335,7 @@ source(here("R", "make_decadal_change_models.R"))
   
 ```
 
-The following combinations of country, starting age, and sex indicate statistically signifanct improvements in model fit if using a model which allows the annual changes to vary by decade
+The following combinations of country, starting age, and sex indicate statistically significant improvements in model fit if using a model which allows the annual changes to vary by decade
 
 ```{r}
 all_null_decadal_models %>% 
@@ -342,12 +345,14 @@ all_null_decadal_models %>%
 ```
 * East Germany, Females, e0
 * East Germany, Males, e65
+* Netherlands, Males, e65
 
 For these two populations, the decadal model has the following coefficients: 
 
 ```{r}
 all_null_decadal_models %>% 
   filter(anova_pval < 0.05) %>% 
+  filter(code == "DEUTE") %>% 
   arrange(desc(anova_pval)) %>% 
   select(code, x, sex, model_alt) %>% 
   mutate(
@@ -379,6 +384,45 @@ all_null_decadal_models %>%
 ```
 
 The above table indicates that, in females in East Germany, the 1990s was associated with a substantial increase in annual life expectancy increases, at both birth ($e_0$) and age 65 years ($e_{65}$). These increases throughout the 1990s were greater than a fifth of a year per year on average. 
+
+And for Netherlands
+
+```{r}
+all_null_decadal_models %>% 
+  filter(anova_pval < 0.05) %>% 
+  filter(code == "NLD") %>% 
+  arrange(desc(anova_pval)) %>% 
+  select(code, x, sex, model_alt) %>% 
+  mutate(
+    model_results = map(model_alt, broom::tidy)
+  ) %>% 
+  select(-model_alt) %>% 
+  unnest(model_results) %>% 
+  mutate(
+    term  = case_when(
+      term == "(Intercept)" ~ "Baseline (1980s)",
+      term == "factor(decade)1990" ~ "1990s",
+      term == "factor(decade)2000" ~ "2000s",
+      term == "factor(decade)2010" ~ "2010s",
+      TRUE ~ NA_character_
+    )
+  ) %>% 
+  mutate(
+    label = glue::glue("{round(estimate, 3)}{case_when(p.value < 0.01 ~ '***', p.value < 0.05 ~ '**', p.value < 0.10 ~ '*', TRUE ~ '')} ({round(std.error, 3)})")
+  ) %>% 
+  ungroup() %>% 
+  select(
+    x, Term = term, label
+  ) %>% 
+  pivot_wider(values_from = label, names_from = x) %>% 
+  kable(format = "html", table.attr = "style=\"color: black;\"",caption = "Coefficients of decadal differences, Netherlands, males, by starting age (0 = life expectancy at birth; 65 = life expectancy at age 65 years") %>% 
+  kableExtra::kable_styling() %>% 
+  footnote(general = "The baseline is the average annual rate of improvement in the 1980s. The other terms indicate increments or decrements from this baseline. Statistical significance of coefficients: * if p < 0.10, ** if p < 0.05, *** if p < 0.01"
+  )
+```
+
+So, for the Netherlands, males, e65, the 2000s were a period of exceptionally rapid improvement. 
+
 
 ## Changepoint and breakpoint analysis.
 
