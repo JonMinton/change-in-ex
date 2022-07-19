@@ -146,6 +146,33 @@ hmd_ex_selected_countries_with_synth %>%
 ```
 
 
+And a simplified version to save 
+
+```{r}
+hmd_ex_selected_countries_with_synth %>% 
+  left_join(country_code_lookup) %>% 
+  mutate(country = factor(country, levels = c("England & Wales", "Scotland", "Synthetic Germany", "Spain", "France", "Italy", "Netherlands"))) %>% 
+  filter(!is.na(country)) %>% 
+  filter(between(year, 1980, 2020)) %>% 
+  filter(x == 0) %>% 
+  ggplot(aes(x = year, y = ex, group = sex, colour = sex, linetype = sex)) + 
+  geom_line() +
+  facet_wrap(~country)  +
+  labs(
+    x = "Year",
+    y = "Life Expectancy at birth (years)",
+    title = "Life expectancies at birth for selected nations",
+    subtitle = "1980 to 2020 or latest available year",
+    caption = "Source: Human Mortality Database.\nSynthetic Germany is an 80%/20% weighted average of West Germany and East Germany respectively",
+    colour = "Sex", linetype = "Sex"
+  ) + 
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+
+ggsave("figures/proposed/e0_trend.png", height = 20, width = 20, units = "cm", dpi = 300)
+
+```
+
+
 
 ```{r, echo = FALSE, fig.cap = "Life Expectancy at age 65"}
 hmd_ex_selected_countries_with_synth %>% 
@@ -163,6 +190,33 @@ hmd_ex_selected_countries_with_synth %>%
     subtitle = "1980 to 2020 or latest available year",
     caption = "Source: Human Mortality Database"
   )
+
+
+```
+
+I'm going to make this the first proposed figure
+
+```{r}
+hmd_ex_selected_countries_with_synth %>% 
+  left_join(country_code_lookup) %>% 
+  mutate(country = factor(country, levels = c("England & Wales", "Scotland", "Synthetic Germany", "Spain", "France", "Italy", "Netherlands"))) %>%
+  filter(!is.na(country)) %>% 
+  filter(between(year, 1980, 2020)) %>% 
+  filter(x == 65) %>% 
+  ggplot(aes(x = year, y = ex, group = sex, colour = sex, linetype = sex)) + 
+  geom_line() +
+  facet_wrap(~country) +
+  labs(
+    x = "Year",
+    y = "Life Expectancy at age 65 (years)",
+    title = "Life expectancies at age 65 for selected nations",
+    subtitle = "1980 to 2020 or latest available year",
+    caption = "Source: Human Mortality Database.\nSynthetic Germany is an 80%/20% weighted average of West Germany and East Germany respectively",
+    colour = "Sex", linetype = "Sex"
+  ) + 
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+
+ggsave("figures/proposed/e65_trend.png", height = 20, width = 20, units = "cm", dpi = 300)
 ```
 
 
@@ -203,29 +257,73 @@ change_in_ex_selected_countries %>%
   )
 ```
 
-### Changes in life expectancy at age 65 
+I now want a simplified and slightly better looking version of this for the main manuscript 
+
+```{r}
+change_in_ex_selected_countries %>% 
+  filter(x == 0) %>% 
+  left_join(country_code_lookup) %>% 
+  mutate(country = factor(country, levels = c("England & Wales", "Scotland", "Synthetic Germany", "Spain", "France", "Italy", "Netherlands"))) %>% 
+  filter(!is.na(country)) %>% 
+  filter(between(year, 1980, 2020)) %>% 
+  mutate(delta_ex = delta_ex * 52.25) %>% # Convert to weeks
+  ggplot(aes(x = year, y = delta_ex)) + 
+  geom_point() + 
+  stat_smooth(se = FALSE) + 
+  facet_grid(sex~country) + 
+  geom_hline(yintercept = 0) + 
+  scale_y_continuous(breaks = seq(-30, 50, by = 10)) +
+  theme(
+        axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)
+  ) + 
+  labs(
+    x = "Year",
+    y = "Change in life expectancy from previous year (in weeks)",
+    title = "Annual change in life expectancy at birth, selected countries",
+    subtitle = "Line: nonlinear smoother over the points",
+    caption =  "Source: Human Mortality Database. Synthetic Germany based on 20% East/80% West German population weighting"
+  )
+
+ggsave("figures/proposed/che0_smoother.png", height = 15, width = 25, units = "cm", dpi = 300)
 
 
-```{r, echo = FALSE, warning=FALSE, message = FALSE, fig.height=8, fig.width=8}
+```
+
+
+And now the same but at age 65 
+
+```{r}
 change_in_ex_selected_countries %>% 
   filter(x == 65) %>% 
   left_join(country_code_lookup) %>% 
-  mutate(country = factor(country, levels = c("England & Wales", "Scotland", "East Germany", "West Germany", "Germany", "Synthetic Germany", "Spain", "France", "Italy", "Netherlands"))) %>% 
+  mutate(country = factor(country, levels = c("England & Wales", "Scotland", "Synthetic Germany", "Spain", "France", "Italy", "Netherlands"))) %>% 
+  filter(!is.na(country)) %>% 
   filter(between(year, 1980, 2020)) %>% 
-  ggplot(aes(x = year, y = delta_ex, colour=sex)) + 
-  geom_point(alpha = 0.2) + 
-  stat_smooth() + 
-  facet_grid(country~sex) + 
+  mutate(delta_ex = delta_ex * 52.25) %>% # Convert to weeks
+  ggplot(aes(x = year, y = delta_ex)) + 
+  geom_point() + 
+  stat_smooth(se = FALSE) + 
+  facet_grid(sex~country) + 
   geom_hline(yintercept = 0) + 
-  theme(strip.text.y = element_text(angle = 0)) + 
+  scale_y_continuous(breaks = seq(-30, 50, by = 10)) +
+  theme(
+        axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)
+  ) + 
   labs(
     x = "Year",
-    y = "Year-on-year change in life expectancy",
+    y = "Change in life expectancy from previous year (in weeks)",
     title = "Annual change in life expectancy at age 65, selected countries",
-    subtitle = "Blue line: nonlinear smoother",
+    subtitle = "Line: nonlinear smoother over the points",
     caption =  "Source: Human Mortality Database. Synthetic Germany based on 20% East/80% West German population weighting"
   )
+
+ggsave("figures/proposed/che65_smoother.png", height = 15, width = 25, units = "cm", dpi = 300)
+
+
+
 ```
+
+
 
 
 ## Time trends 
@@ -590,6 +688,150 @@ segmented_breakpoints_models %>%
 
 ```
 
+
+I'm going to just get the predicted values for the best model
+
+```{r}
+best_breakpoint_model_predictions <- 
+  segmented_breakpoints_models %>% 
+    mutate(bic = map_dbl(mdl_outputs, BIC)) %>% 
+    group_by(code, x, sex) %>% 
+    filter(bic == min(bic)) %>% 
+    mutate(predictions = map2(mdl_outputs, data, predict)) %>% 
+    mutate(data_augmented = map2(data, predictions, ~ .x %>% mutate(prediction = .y))) %>% 
+    select(code, x, sex, data_augmented) %>% 
+    ungroup() %>% 
+    unnest(data_augmented)
+
+
+```
+
+First I want to show the values against predicted 
+
+```{r}
+best_breakpoint_model_predictions %>% 
+  left_join(country_code_lookup) %>% 
+  mutate(country = factor(country, levels = c("England & Wales", "Scotland", "Synthetic Germany", "Spain", "France", "Italy", "Netherlands"))) %>% 
+  filter(!is.na(country)) %>% 
+  filter(x == 0) %>% 
+  ggplot(aes(x = year)) + 
+  facet_grid(sex ~ country) + 
+  geom_point(aes(y = ex), alpha = 0.35) + 
+  geom_line(aes(y = prediction), colour = "red") +
+  theme(
+        axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)
+  ) + 
+  labs(
+    x = "Year",
+    y = "Life expectancy (years)",
+    title = "Predicted and observed life expectancy at birth, selected countries",
+    subtitle = "Line: Best segmented regression model for the country",
+    caption =  "Source: Human Mortality Database. Synthetic Germany based on 20% East/80% West German population weighting"
+  )
+
+ggsave("figures/proposed/e0_breakpoint.png", height = 15, width = 25, units = "cm", dpi = 300)
+
+```
+Now, at age 65
+
+```{r}
+best_breakpoint_model_predictions %>% 
+  left_join(country_code_lookup) %>% 
+  mutate(country = factor(country, levels = c("England & Wales", "Scotland", "Synthetic Germany", "Spain", "France", "Italy", "Netherlands"))) %>% 
+  filter(!is.na(country)) %>% 
+  filter(x == 65) %>% 
+  ggplot(aes(x = year)) + 
+  facet_grid(sex ~ country) + 
+  geom_point(aes(y = ex), alpha = 0.35) + 
+  geom_line(aes(y = prediction), colour = "red") +
+  theme(
+        axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)
+  ) + 
+  labs(
+    x = "Year",
+    y = "Life expectancy (years)",
+    title = "Predicted and observed life expectancy at age 65, selected countries",
+    subtitle = "Line: Best segmented regression model for the country",
+    caption =  "Source: Human Mortality Database. Synthetic Germany based on 20% East/80% West German population weighting"
+  )
+
+ggsave("figures/proposed/e65_breakpoint.png", height = 15, width = 25, units = "cm", dpi = 300)
+
+```
+
+
+And now, the same, but differences 
+
+```{r}
+best_breakpoint_model_predictions %>% 
+  left_join(country_code_lookup) %>% 
+  mutate(country = factor(country, levels = c("England & Wales", "Scotland", "Synthetic Germany", "Spain", "France", "Italy", "Netherlands"))) %>% 
+  filter(!is.na(country)) %>% 
+  filter(x == 0) %>% 
+  group_by(country, sex) %>% 
+  arrange(year) %>% 
+  mutate(
+    ch_ex      = 52.25 * (ex - lag(ex)                 ), 
+    ch_ex_pred = 52.25 * (prediction - lag(prediction) )
+  ) %>% 
+  filter(!is.na(ch_ex), !is.na(ch_ex_pred))  %>% 
+  ggplot(aes(year)) + 
+  geom_point(aes(y = ch_ex), alpha = 0.35) +
+  facet_grid(sex ~ country) +
+  geom_hline(yintercept = 0) + 
+  geom_line(aes(y = ch_ex_pred), colour = "red") +
+  theme(
+    axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)
+  ) + 
+  scale_y_continuous(breaks = seq(-30, 50, by = 10)) +
+  labs(
+    x = "Year",
+    y = "Change in life expectancy from previous year (weeks)",
+    title = "Predicted and observed annual changes in life expectancy at birth, selected countries",
+    subtitle = "Line: Best segmented regression model for the country",
+    caption =  "Source: Human Mortality Database. Synthetic Germany based on 20% East/80% West German population weighting"
+  )
+
+ggsave("figures/proposed/ch_e0_breakpoint.png", height = 15, width = 25, units = "cm", dpi = 300)
+
+
+```
+And finally for age 65
+
+
+```{r}
+best_breakpoint_model_predictions %>% 
+  left_join(country_code_lookup) %>% 
+  mutate(country = factor(country, levels = c("England & Wales", "Scotland", "Synthetic Germany", "Spain", "France", "Italy", "Netherlands"))) %>% 
+  filter(!is.na(country)) %>% 
+  filter(x == 65) %>% 
+  group_by(country, sex) %>% 
+  arrange(year) %>% 
+  mutate(
+    ch_ex      = 52.25 * (ex - lag(ex)                 ), 
+    ch_ex_pred = 52.25 * (prediction - lag(prediction) )
+  ) %>% 
+  filter(!is.na(ch_ex), !is.na(ch_ex_pred))  %>% 
+  ggplot(aes(year)) + 
+  geom_point(aes(y = ch_ex), alpha = 0.35) +
+  facet_grid(sex ~ country) +
+  geom_hline(yintercept = 0) + 
+  geom_line(aes(y = ch_ex_pred), colour = "red") +
+  theme(
+    axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)
+  ) + 
+  scale_y_continuous(breaks = seq(-30, 50, by = 10)) +
+  labs(
+    x = "Year",
+    y = "Change in life expectancy from previous year (weeks)",
+    title = "Predicted and observed annual changes in life expectancy at age 65, selected countries",
+    subtitle = "Line: Best segmented regression model for the country",
+    caption =  "Source: Human Mortality Database. Synthetic Germany based on 20% East/80% West German population weighting"
+  )
+
+ggsave("figures/proposed/ch_e65_breakpoint.png", height = 15, width = 25, units = "cm", dpi = 300)
+
+```
 
 I want to save segmented_breakpoints_models so I can explore it in an app 
 
