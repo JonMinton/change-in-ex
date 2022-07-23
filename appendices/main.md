@@ -13,6 +13,6 @@ knitr::opts_chunk$set(echo = TRUE)
 
 This page contains links to various appendices for our paper. These links are presented below. 
 
-- [Appendix 1: Construction of Synthetic Germany](https://htmlpreview.github.io?https://raw.githubusercontent.com/JonMinton/change-in-ex/main/appendices/life_expectancy_trends.html)
-- [Appendix 2: Graphs of ex]()
+- [Appendix 1: Construction of Synthetic Germany](https://htmlpreview.github.io?https://raw.githubusercontent.com/JonMinton/change-in-ex/main/appendices/synthetic_germany_approach.html)
+- [Appendix 2: Graphs of ex](https://htmlpreview.github.io?https://raw.githubusercontent.com/JonMinton/change-in-ex/main/appendices/life_expectancy_trends.html)
 - [Appendix 3: Changepoint analysis]()
