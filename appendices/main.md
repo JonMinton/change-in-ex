@@ -13,7 +13,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 This page contains links to various appendices for our paper. These links are presented below. 
 
-- link 1 
-- link 2
-- link 3
-- link 4
+- Appendix 1: Construction of Synthetic Germany
+- Appendix 2: Graphs of ex
+- Appendix 3: Graphs of change in ex
+- Appendix 4: Changepoint analysis
