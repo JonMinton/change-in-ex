@@ -26,8 +26,10 @@ For example, it would be wrong to conclude that a model with an $R^2$ or adjuste
 * For the best of the three models for each dataset, the breakpoint or breakpoints (if any), and the model predictions, will be presented and visualised. 
 
 Breaks in the data are estimated by fitting the following model specifications:
+
     * **$M_0$**: $\frac{de_x}{dt} \sim \alpha$
     * **$M_1$**: $\frac{de_x}{dt} \sim \alpha + \beta T$, where 
+
     
 $$
 T = \left\{
@@ -37,7 +39,9 @@ T = \left\{
     \end{array}
 \right.
 $$
+    
     * **M_2**: $\frac{de_x}{dt} \sim \alpha + \beta_1 T_1 + \beta_2 T_2$, where 
+    
     
 $$
 T_1 = \left\{
@@ -58,6 +62,8 @@ T_2 = \left\{
     \end{array}
 \right.
 $$
+
+
 i.e. the selection of $\tau_1$ and $\tau_2$ partitions the model into three sections: $\frac{de_x}{dt} \sim \alpha$ where $t \lt \tau_1$, $\frac{de_x}{dt} \sim \alpha + \beta_1$ where $\tau_1 \le t \lt \tau_2$, and $\frac{de_x}{dt} \sim \alpha + \beta_2$ where $t \ge \tau_2$. As $\tau_1 \lt \tau_2$, only values of $\tau_2$ which are greater than $\tau_1$ are considered. Otherwise all whole integer values of $\tau$ are seached through for both $M_1$ and $M_2$. 
 
 

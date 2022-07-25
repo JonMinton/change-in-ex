@@ -80,7 +80,9 @@ hmd_ex_selected_countries_with_synth %>%
     caption = "Source: Human Mortality Database"
   )
 ```
+
 Equivalently
+
 
 ```{r}
 hmd_ex_selected_countries_with_synth %>% 
@@ -123,6 +125,7 @@ hmd_ex_selected_countries_with_synth %>%
     caption = "Source: Human Mortality Database"
   )
 ```
+
 Equivalently: 
 
 ```{r}
