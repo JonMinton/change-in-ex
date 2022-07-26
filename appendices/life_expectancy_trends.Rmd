@@ -148,4 +148,102 @@ hmd_ex_selected_countries_with_synth %>%
     caption = "Source: Human Mortality Database"
   )
 ```
+# Average life expectancy change 
+
+The following shows the average change in life expectancy for each population over the full period, and including East Germany and West Germany as separate populations
+
+
+```{r}
+hmd_ex_selected_countries_with_synth %>% 
+    filter(year >= 1979) %>% 
+    group_by(code, x, sex) %>% 
+    arrange(year) %>% 
+    mutate(delta_ex = ex - lag(ex)) %>% 
+    nest() %>% 
+    mutate(
+      rwd_model = map(data, ~lm(delta_ex ~ 1, data = . )),
+      ar_model  = map(data, ~lm(delta_ex ~ lag(delta_ex), data = .))
+    ) %>% 
+    mutate(
+      aic_rwd = map_dbl(rwd_model, AIC),
+      aic_ar  = map_dbl(ar_model, AIC)
+    ) %>% 
+    mutate(
+      diff_aic = aic_ar - aic_rwd
+    )  %>% 
+  # filter(diff_aic > 0)
+  mutate(
+    tidied_ar_model = map(ar_model, broom::tidy)
+  ) %>% 
+  unnest(tidied_ar_model) %>% 
+  filter(term == "(Intercept)") %>% 
+  arrange(desc(estimate)) %>%
+  left_join(country_code_lookup) %>% 
+  mutate(country = factor(country, levels = c("England & Wales", "Scotland", "East Germany", "West Germany", "Germany", "Synthetic Germany", "Spain", "France", "Italy", "Netherlands"))) %>% 
+  select(code, country, x, sex, estimate, std.error) %>% 
+  mutate(display_label = glue::glue("{country}_{x}_{sex}")) %>% 
+  mutate(estimate_weeks = estimate * 52.25) %>% 
+  ggplot(aes(estimate_weeks, fct_reorder(display_label, estimate_weeks))) + 
+  geom_point(aes(colour = x), show.legend = FALSE) +
+  expand_limits( x = 0) + 
+  geom_vline(xintercept = 0) + 
+  labs(
+    x = "Average annual life expectancy change",
+    y = "Country-sex combination",
+    title = "Average annual improvements by country and sex",
+    subtitle = "Range: 1980 to 2020 or nearest available years",
+    caption = "Source: Human Mortality Database"
+  ) + 
+  facet_wrap(~x)
+
+```
+The figure below shows the same for those populations considered in the main paper.
+
+```{r}
+hmd_ex_selected_countries_with_synth %>% 
+    filter(year >= 1979) %>% 
+    filter(!(code %in% c("DEUTE", "DEUTW", "DEUTNP"))) %>%  # Using only synthetic germany for longer time period
+    group_by(code, x, sex) %>% 
+    arrange(year) %>% 
+    mutate(delta_ex = ex - lag(ex)) %>% 
+    nest() %>% 
+    mutate(
+      rwd_model = map(data, ~lm(delta_ex ~ 1, data = . )),
+      ar_model  = map(data, ~lm(delta_ex ~ lag(delta_ex), data = .))
+    ) %>% 
+    mutate(
+      aic_rwd = map_dbl(rwd_model, AIC),
+      aic_ar  = map_dbl(ar_model, AIC)
+    ) %>% 
+    mutate(
+      diff_aic = aic_ar - aic_rwd
+    )  %>% 
+  # filter(diff_aic > 0)
+  mutate(
+    tidied_ar_model = map(ar_model, broom::tidy)
+  ) %>% 
+  unnest(tidied_ar_model) %>% 
+  filter(term == "(Intercept)") %>% 
+  arrange(desc(estimate)) %>%
+  left_join(country_code_lookup) %>% 
+  mutate(country = factor(country, levels = c("England & Wales", "Scotland", "Synthetic Germany", "Spain", "France", "Italy", "Netherlands"))) %>%
+  filter(!is.na(country)) %>% 
+  select(code, country, x, sex, estimate, std.error) %>% 
+  mutate(display_label = glue::glue("{country}_{x}_{sex}")) %>% 
+  mutate(estimate_weeks = estimate * 52.25) %>% 
+  ggplot(aes(estimate_weeks, fct_reorder(display_label, estimate_weeks))) + 
+  geom_point(aes(colour = x), show.legend = FALSE) +
+  expand_limits( x = 0) + 
+  geom_vline(xintercept = 0) + 
+  labs(
+    x = "Average annual life expectancy change (weeks per year)",
+    y = "Country-sex combination",
+    title = "Average annual improvements by country and sex",
+    subtitle = "Range: 1980 to 2020 or nearest available years",
+    caption = "Source: Human Mortality Database"
+  ) + 
+  facet_wrap(~x)
+
+
+```
 
