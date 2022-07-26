@@ -11,7 +11,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 # Introduction
 
-This page contains links to various appendices for our paper. These links are presented below. 
+This page contains links to various appendices for our paper, "Slowing down or returning to normal? Life expectancy improvements in UK nations compared to 5 large European countries before the COVID-19 pandemic". These links are presented below. 
 
 - [Appendix 1: Construction of Synthetic Germany](https://htmlpreview.github.io?https://raw.githubusercontent.com/JonMinton/change-in-ex/main/appendices/synthetic_germany_approach.html) ([PDF](https://github.com/JonMinton/change-in-ex/raw/main/appendices/synthetic_germany_approach.pdf))
 - [Appendix 2: Graphs of ex](https://htmlpreview.github.io?https://raw.githubusercontent.com/JonMinton/change-in-ex/main/appendices/life_expectancy_trends.html) ([PDF](https://github.com/JonMinton/change-in-ex/raw/main/appendices/life_expectancy_trends.pdf))
