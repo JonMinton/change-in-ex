@@ -15,6 +15,6 @@ This page contains links to various appendices for our paper. These links are pr
 
 - [Appendix 1: Construction of Synthetic Germany](https://htmlpreview.github.io?https://raw.githubusercontent.com/JonMinton/change-in-ex/main/appendices/synthetic_germany_approach.html)
 - [Appendix 2: Graphs of ex](https://htmlpreview.github.io?https://raw.githubusercontent.com/JonMinton/change-in-ex/main/appendices/life_expectancy_trends.html)
-- [Appendix 3: Changepoint analysis](https://htmlpreview.github.io?https://raw.githubusercontent.com/JonMinton/change-in-ex/main/appendices/changepoint_methods.html) [PDF](https://github.com/JonMinton/change-in-ex/raw/main/appendices/changepoint_methods.pdf)
+- [Appendix 3: Changepoint analysis](https://htmlpreview.github.io?https://raw.githubusercontent.com/JonMinton/change-in-ex/main/appendices/changepoint_methods.html) ([PDF](https://github.com/JonMinton/change-in-ex/raw/main/appendices/changepoint_methods.pdf))
 - [Appendix 4: Average change in life expectancy by country]()
 - [Appendix 5: Are annual changes in life expectancy purely random?]()
