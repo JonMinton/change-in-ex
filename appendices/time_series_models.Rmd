@@ -3,8 +3,8 @@ title: "Time Series Models"
 author: "Jon Minton"
 date: '2022-07-21'
 output:
-  html_document: default
   pdf_document: default
+  html_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -196,6 +196,104 @@ ts_model_comparisons %>%
 ```
 
 The majority of these coefficients are positive, indicating 'stickiness' in the values in the series, rather than oscillation. The exception is for females for conditional life expectancy at age 65, where the coefficients are negative for England & Wales, France, Scotland, Italy, and Spain. This suggests that for older females the life expectancy series tends to 'oscillate' rather than 'stick'. 
+
+## Alternative approach to establishing if series are autocorrelated 
+
+An alternative way to determing whether the series are autocorrelated is to compare two linear regression equations: one in which change in life expectancy is regressed against an intercept; another in which the change in life expectancy is additionally regressed against the change in the previous year 
+
+```{r}
+
+alt_approach_autocorrelated <- 
+  hmd_ex_selected_countries_with_synth %>% 
+      filter(year >= 1979) %>% 
+      filter(!(code %in% c("DEUTE", "DEUTW", "DEUTNP"))) %>%  # Using only synthetic germany for longer time period
+      group_by(code, x, sex) %>% 
+      arrange(year) %>% 
+      mutate(delta_ex = ex - lag(ex)) %>% 
+      nest() %>% 
+      mutate(
+        rwd_model = map(data, ~lm(delta_ex ~ 1, data = . )),
+        ar_model  = map(data, ~lm(delta_ex ~ lag(delta_ex), data = .))
+      ) %>% 
+      mutate(
+        bic_rwd = map_dbl(rwd_model, BIC),
+        bic_ar  = map_dbl(ar_model, BIC)
+      ) %>% 
+      mutate(
+        diff_bic = bic_ar - bic_rwd
+      ) %>% 
+    mutate(
+      which_preferred = ifelse(diff_bic < 0, "Autocorrelated", "RWD")
+    ) %>% 
+      left_join(country_code_lookup) %>% 
+      mutate(country = factor(country, levels = c("England & Wales", "Scotland", "Synthetic Germany", "Spain", "France", "Italy", "Netherlands"))) %>% 
+    filter(!is.na(country)) 
+
+
+alt_approach_autocorrelated %>% 
+  select(country, x, sex, bic_rwd, bic_ar, which_preferred)
+```
+This approach also identifies most, but not all, of the populations to exhibit some degree of autocorrelation. (n.b. the more stringent BIC was used instead of AICc in this example, which may explain discrepancies between approaches)
+
+For each of the above, the intercept (average improvement per year) and autocorrelation term can be extracted as follows: 
+
+```{r}
+alt_approach_autocorrelated  %>% 
+  left_join(country_code_lookup) %>% 
+  mutate(country = factor(country, levels = c("England & Wales", "Scotland", "Synthetic Germany", "Spain", "France", "Italy", "Netherlands"))) %>% 
+  filter(!is.na(country)) %>% 
+  select(country, x, sex, ar_model) %>% 
+  mutate(tidied_model = map(ar_model, broom::tidy)) %>% 
+  select(-ar_model) %>% 
+  filter(x == 0) %>% 
+  unnest(tidied_model) %>% 
+  ggplot(aes(estimate, reorder(country, estimate))) + 
+  geom_point() + 
+  facet_grid(term~sex) + 
+  geom_vline(xintercept = 0) + 
+  geom_errorbarh(aes(xmin = estimate - 1.96  * std.error, xmax = estimate + 1.96 * std.error))  + 
+  labs(
+    x = "Coefficient value", 
+    y = "Country",
+    title = "Coefficients from autoregressive models\nlife expectancy at birth, selected countries",
+    subtitle = "Horizontal bars indicate 95% confidence intervals",
+    caption = "Source: HMD lifetables"
+    
+  )
+
+
+```
+Here all autoregression coefficients are negative, most of which are statistically significant at p < 0.05. 
+
+The following shows the equivalent trends for x = 65
+
+```{r}
+alt_approach_autocorrelated  %>% 
+  left_join(country_code_lookup) %>% 
+  mutate(country = factor(country, levels = c("England & Wales", "Scotland", "Synthetic Germany", "Spain", "France", "Italy", "Netherlands"))) %>% 
+  filter(!is.na(country)) %>% 
+  select(country, x, sex, ar_model) %>% 
+  mutate(tidied_model = map(ar_model, broom::tidy)) %>% 
+  select(-ar_model) %>% 
+  filter(x == 65) %>% 
+  unnest(tidied_model) %>% 
+  ggplot(aes(estimate, reorder(country, estimate))) + 
+  geom_point() + 
+  facet_grid(term~sex) + 
+  geom_vline(xintercept = 0) + 
+  geom_errorbarh(aes(xmin = estimate - 1.96  * std.error, xmax = estimate + 1.96 * std.error))  + 
+  labs(
+    x = "Coefficient value", 
+    y = "Country",
+    title = "Coefficients from autoregressive models\nlife expectancy at age 65, selected countries",
+    subtitle = "Horizontal bars indicate 95% confidence intervals",
+    caption = "Source: HMD lifetables"
+    
+  )
+```
+Here the negative correlations appear even stronger, and of larger magnitude in Italy than elsewhere. It also appears that the two coefficients are negatively associated, with Netherlands having the lowest average annual improvement, but also the smallest (and non-significant) magnitude of negative autocorrelation; Italy appears the converse. 
+
+
 
 
 ## Comparing a wider range of ARIMA models
