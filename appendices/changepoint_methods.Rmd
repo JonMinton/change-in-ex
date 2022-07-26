@@ -2,7 +2,10 @@
 title: "Changepoint Approach"
 author: "Jon Minton"
 date: '2022-07-22'
-output: html_document
+output:
+  pdf_document: default
+  word_document: default
+  html_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -27,26 +30,26 @@ For example, it would be wrong to conclude that a model with an $R^2$ or adjuste
 
 Breaks in the data are estimated by fitting the following model specifications:
 
-    * **$M_0$**: $\frac{de_x}{dt} \sim \alpha$
-    * **$M_1$**: $\frac{de_x}{dt} \sim \alpha + \beta T$, where 
+* **$M_0$**: $\frac{de_x}{dt} \sim \alpha$
+* **$M_1$**: $\frac{de_x}{dt} \sim \alpha + \beta T$, where 
 
     
 $$
 T = \left\{
-    \begin{array}\\
-        1 & \mbox{if } \ t \ge \tau \\
+    \begin{array}{cc}
+        1 & \mbox{if   } \  \ t \ge \tau \\
         0 & \mbox{otherwise}
     \end{array}
 \right.
 $$
     
-    * **M_2**: $\frac{de_x}{dt} \sim \alpha + \beta_1 T_1 + \beta_2 T_2$, where 
+* **$M_2$**: $\frac{de_x}{dt} \sim \alpha + \beta_1 T_1 + \beta_2 T_2$, where 
     
     
 $$
 T_1 = \left\{
-    \begin{array}\\
-        1 & \mbox{if } \tau_1 \le t \lt \tau_2 \\
+    \begin{array}{cc}
+        1 & \mbox{if } \tau_1 \le t < \tau_2 \\
         0 & \mbox{otherwise}
     \end{array}
 \right.
@@ -56,7 +59,7 @@ and
 
 $$
 T_2 = \left\{
-    \begin{array}\\
+    \begin{array}{cc}
         1 & \mbox{if } t \ge \tau_2 \\
         0 & \mbox{otherwise}
     \end{array}
@@ -64,7 +67,7 @@ T_2 = \left\{
 $$
 
 
-i.e. the selection of $\tau_1$ and $\tau_2$ partitions the model into three sections: $\frac{de_x}{dt} \sim \alpha$ where $t \lt \tau_1$, $\frac{de_x}{dt} \sim \alpha + \beta_1$ where $\tau_1 \le t \lt \tau_2$, and $\frac{de_x}{dt} \sim \alpha + \beta_2$ where $t \ge \tau_2$. As $\tau_1 \lt \tau_2$, only values of $\tau_2$ which are greater than $\tau_1$ are considered. Otherwise all whole integer values of $\tau$ are seached through for both $M_1$ and $M_2$. 
+i.e. the selection of $\tau_1$ and $\tau_2$ partitions the model into three sections: $\frac{de_x}{dt} \sim \alpha$ where $t < \tau_1$, $\frac{de_x}{dt} \sim \alpha + \beta_1$ where $\tau_1 \le t < \tau_2$, and $\frac{de_x}{dt} \sim \alpha + \beta_2$ where $t \ge \tau_2$. As $\tau_1 < \tau_2$, only values of $\tau_2$ which are greater than $\tau_1$ are considered. Otherwise all whole integer values of $\tau$ are seached through for both $M_1$ and $M_2$. 
 
 
 The above analyses are performed for each population group, comprising different combinations of country, sex, and starting age. 
@@ -173,6 +176,7 @@ change_in_ex_selected_countries %>%
 
 
 ```
+
 # Functions
 
 
@@ -379,7 +383,7 @@ changepoint_breakpoint_models <-
 
 The relationship between proposed `tau` (i.e. changepoint year) and BIC is shown for England & Wales below
 
-```{r}
+```{r cache=TRUE}
 changepoint_breakpoint_models %>% 
   filter(code == "GBRTENW") %>% 
   unnest(mdl_outputs) %>% 
@@ -408,7 +412,7 @@ We can see here that 2012 is consistently identified as having the lowest BIC fo
 
 The following code identifies the best two changepoint model for each population 
 
-```{r}
+```{r cache=TRUE}
 changepoint_breakpoints_models <- 
   hmd_ex_selected_countries_with_synth %>% 
   filter(code != "DEUTNP") %>%   
@@ -490,6 +494,7 @@ changepoint_breakpoints_models %>%
   )
 
 ```
+
 For France, for all four subpopulations, a pairing of `{2004, 2005}` was identified. If we look at the series for France, we can see why this pair of years may have been identified 
 
 ```{r}
@@ -725,7 +730,6 @@ best_cp_paths <-
   filter(bic_rank == 1) 
 ```
 
-
 The best changepoint model (if any), along with the points, are shown for life expectancy at birth below
 
 ```{r}
@@ -809,6 +813,7 @@ best_cp_paths %>%
   )
 
 ```
+
 For changes in conditional life expectancy from age 65 two changepoint models with contiguous years were identified for females in Germany, France and Italy; and for males in Scotland, France, Italy and the Netherlands. 
 
 # Summary and conclusion
@@ -817,6 +822,6 @@ This appendix has show the implementation and results of applying an alternative
 
 Although the fact these individual years are outliers is important to note, as it illustrates how varied life expectancy change series can be when single years are used, these single years cannot, by definition, define or constitute a change in trend, which was the purpose of this exercise. It is for this reason that the segmented approach was used instead of this approach in the main paper. 
 
-The changepoint approach could be adapted to be less 'sensitive' to outlier years by narrowing the search space for $tau_2$ conditional on $tau_1$ so as to be two or more years later. (e.g. if $tau_1$ were 1990 then candidate values for $tau_2$ would start from 1992 instead of 1991.) However, the choice of how much to narrow down the search space in this way is somewhat arbitrary, so was not adapted further for this paper. 
+The changepoint approach could be adapted to be less 'sensitive' to outlier years by narrowing the search space for $\tau_2$ conditional on $\tau_1$ so as to be two or more years later. (e.g. if $\tau_1$ were 1990 then candidate values for $\tau_2$ would start from 1992 instead of 1991.) However, the choice of how much to narrow down the search space in this way is somewhat arbitrary, so was not adapted further for this paper. 
 
 

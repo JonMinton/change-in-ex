@@ -1374,6 +1374,7 @@ g_path +
 
 
 ```
+
 # Summary of differences and similarities between segmented approach and changepoint approach
 
 In order to compare the results of the two modelling approaches, an R shiny app was built. This app allows each of the countries of interest to be selected, and has three tabs for different displays. These tabs are labelled: 'Segmented', which shows the results of the segmented regression approach; 'Changepoints', which shows the result of the changepoint approach; and both, which compares the best performing segmented and changepoint models. For each country, the results are shown as a two-by-two array, with each sex a different column and each row a different starting age. An option is provided to show the data for the populations, from which the models are derived. 

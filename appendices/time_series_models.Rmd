@@ -1,5 +1,5 @@
 ---
-title: "Appendices"
+title: "Time Series Models"
 author: "Jon Minton"
 date: '2022-07-21'
 output: html_document
@@ -9,9 +9,10 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-# Appendix 1: Are annual ex time series random walks with drift (RWD) or do they have autocorrelation? 
 
-Our paper noted that there is substantial annual variation in annual changes in life expectancy. After taking the first difference in these series (i.e. subtracting for each value in the series its previous value), the series of remaining difference may be purely random. Alternatively, even after such differencing the series may have some degree of autocorrelation (i.e. the differenced value for one year may be informative as to the differenced value for the next one or more observations in the series), or there may be a moving average component to the series. 
+# Are annual ex time series random walks with drift (RWD) or do they have autocorrelation? 
+
+Section X of the main manuscript noted, from figure 1a and 1b, that there is substantial annual variation in annual changes in life expectancy. After taking the first difference in these series (i.e. subtracting for each value in the series its previous value), the series of remaining difference may be purely random. Alternatively, even after such differencing the series may have some degree of autocorrelation (i.e. the differenced value for one year may be informative as to the differenced value for the next one or more observations in the series), or there may be a moving average component to the series. 
 
 Different patterns of variation in the time series can be modelled using different specifications of the ARIMA modelling approach. ARIMA stands for Autoregressive (AR), Integrated (I), Moving Average (MA), and different ARIMA specifications are represented by the shorthand ARIMA(p, d, q). The p term indicates the number of autoregressive terms, the d term the number of times the series have been differenced, and the q term the number of moving average terms. 
 
@@ -211,6 +212,6 @@ series_of_interest %>%
 tmp
 ```
 
-The length of the vectors ar_roots and ma_roots indicate, respectively, how many ar or ma terms were identified in the best fitting model for the population indicated by sex, x (starting age) and country. For example, for females in England & Wales, from age 0, an ARIMA(1,1,0) model is preferred, whereas for females in Scotland, from age 0, an ARIMA(0,1,1) model is preferred. 
+The length of the vectors ar_roots and ma_roots indicate, respectively, how many ar or ma terms were identified in the best fitting model for the population indicated by sex, x (starting age) and country. For example, for females in England & Wales, from age 0, an ARIMA(1,1,0) model is preferred, whereas for females in Scotland, from age 0, an ARIMA(0, 1, 1) model is preferred. 
 
 There are few populations for which the random-walk-with-drift (RWD) model is preferred to more complex models, but also not a single alternative model specification (such as ARIMA(1,1,0)) which is preferred for the majority of populations. 
