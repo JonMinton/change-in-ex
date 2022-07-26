@@ -3,8 +3,8 @@ title: "Time Series Models"
 author: "Jon Minton"
 date: '2022-07-21'
 output:
-  pdf_document: default
   html_document: default
+  pdf_document: default
 ---
 
 ```{r setup, include=FALSE}
