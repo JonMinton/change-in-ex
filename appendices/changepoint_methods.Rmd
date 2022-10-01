@@ -770,7 +770,7 @@ best_cp_paths %>%
 
 ```
 
-We can see that the best-performing model is a two changepoing model with contiguous years for Scottish females, Spanish females, French females, Italian females, French males and Dutch males. For each of these models it is clear that the model in effect 'detected' an outlier of either exceptionally high annual change (France and Italy) or exceptionally low or negative annual change (Scottish males, Spanish females, Dutch males). 
+We can see that the best-performing model is a two changepoint model with contiguous years for Scottish females, Spanish females, French females, Italian females, French males and Dutch males. For each of these models it is clear that the model in effect 'detected' an outlier of either exceptionally high annual change (France and Italy) or exceptionally low or negative annual change (Scottish males, Spanish females, Dutch males). 
 
 For England & Wales (both males and females) and for Scottish females, a single changepoint model was selected, with lower rates of annual life expectancy gain after around 2011 than before. For Scottish males this fell to negative values (declining rather than stalling mortality). A somewhat similar pattern is observed for Germany, but this appears to be less consistent in term and less severe than for England & Wales. 
 
