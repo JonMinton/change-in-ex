@@ -693,6 +693,34 @@ best_breakpoint_model_predictions <-
 
 ```
 
+**Reviewer request: Calculation by AICc**
+
+In the manuscript itself, BIC is used twice: 
+
+- To select the best performing 1 and 2 breakpoint model
+- To select, for each population, whether the 0, 1 or 2 breakpoint model is preferable. 
+
+At both of these stages, the AICc criterion could be used instead. This has already been implemented using the `AICcmodavg::AICc` package and function. 
+
+
+
+```{r}
+best_breakpoint_model_predictions_aicc <- 
+  segmented_breakpoints_models %>% 
+    mutate(aicc = map_dbl(mdl_outputs, AICcmodavg::AICc)) %>% 
+    group_by(code, x, sex) %>% 
+    filter(aicc == min(aicc)) %>% 
+    mutate(predictions = map2(mdl_outputs, data, predict)) %>% 
+    mutate(data_augmented = map2(data, predictions, ~ .x %>% mutate(prediction = .y))) %>% 
+    select(code, x, sex, data_augmented) %>% 
+    ungroup() %>% 
+    unnest(data_augmented)
+
+
+```
+
+
+
 First I want to show the values against predicted 
 
 ```{r}
@@ -746,8 +774,90 @@ ggsave("figures/proposed/e65_breakpoint.png", height = 15, width = 25, units = "
 
 ```
 
+**Reviewer 1 Request: Can the residuals of the models be presented?**
 
-And now, the same, but differences 
+
+```{r}
+best_breakpoint_model_predictions %>% 
+  left_join(country_code_lookup) %>% 
+  mutate(country = factor(country, levels = c("England & Wales", "Scotland", "Synthetic Germany", "Spain", "France", "Italy", "Netherlands"))) %>% 
+  filter(!is.na(country)) %>%
+  mutate(
+    residual = prediction - ex
+  ) %>% 
+  ggplot(aes(year, residual)) + 
+  geom_point() + 
+  geom_hline(yintercept = 0) + 
+  stat_smooth() + 
+  labs(
+    x = "year", y = "Residual",
+    title = "Difference between observed and predicted life expectancies",
+    subtitle = "Both starting ages (0 and 65), both sexes and all countries",
+    caption = "Predictions based on best-performing 0, 1 or 2 breakpoint models as assessed using BIC\n
+    A GAM smoother line has been added to indicate any systematic change in residuals over time"
+  )
+
+```
+
+The following shows the same but separated by starting age
+
+```{r}
+best_breakpoint_model_predictions %>% 
+  left_join(country_code_lookup) %>% 
+  mutate(country = factor(country, levels = c("England & Wales", "Scotland", "Synthetic Germany", "Spain", "France", "Italy", "Netherlands"))) %>% 
+  filter(!is.na(country)) %>%
+  mutate(
+    residual = prediction - ex
+  ) %>% 
+  ggplot(aes(year, residual)) + 
+  geom_point() + 
+  facet_wrap(~x) +
+  geom_hline(yintercept = 0) + 
+  stat_smooth() + 
+  labs(
+    x = "year", y = "Residual",
+    title = "Difference between observed and predicted life expectancies",
+    subtitle = "Separated by starting age (0 and 65), both sexes and all countries",
+    caption = "Predictions based on best-performing 0, 1 or 2 breakpoint models as assessed using BIC\n
+    A GAM smoother line has been added to indicate any systematic change in residuals over time"
+  )
+
+
+```
+
+The follow shows differences by sex
+
+```{r}
+best_breakpoint_model_predictions %>% 
+  left_join(country_code_lookup) %>% 
+  mutate(country = factor(country, levels = c("England & Wales", "Scotland", "Synthetic Germany", "Spain", "France", "Italy", "Netherlands"))) %>% 
+  filter(!is.na(country)) %>%
+  mutate(
+    residual = prediction - ex
+  ) %>% 
+  ggplot(aes(year, residual)) + 
+  geom_point() + 
+  facet_wrap(~sex) +
+  geom_hline(yintercept = 0) + 
+  stat_smooth() + 
+  labs(
+    x = "year", y = "Residual",
+    title = "Difference between observed and predicted life expectancies",
+    subtitle = "Separated by sex, both starting ages and all countries",
+    caption = "Predictions based on best-performing 0, 1 or 2 breakpoint models as assessed using BIC\n
+    A GAM smoother line has been added to indicate any systematic change in residuals over time"
+  )
+
+```
+
+### Conclusions 
+
+Though there are some years where residuals tend to be very high or very low, these tend to be consistent across all countries, despite differences in the preferred model specification for each country. Key examples include 2003 and 2004, and 2014 and 2015. Both pairs of adjacent year comprise one year with systematically high (or low) residuals, followed by another with systematically low (or high) residuals. These are likely to reflect the somewhat oscillatory behaviour of annual mortality, likely driven by phenomena like forward mortality displacement. 
+
+## Differences in annual mortality
+
+The following shows what the best-performing models suggest are the differences in annual mortality from year to year
+
 
 ```{r}
 best_breakpoint_model_predictions %>% 
