@@ -3,8 +3,8 @@ title: "Response to Reviewer 1 Comments"
 author: "Jon Minton"
 date: "2022-10-03"
 output:
-  pdf_document: default
   html_document: default
+  pdf_document: default
 ---
 
 ```{r setup, include=FALSE}
