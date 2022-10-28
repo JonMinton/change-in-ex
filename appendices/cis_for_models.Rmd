@@ -1,0 +1,592 @@
+---
+title: 'Confidence Intervals for loess fits and linear/segmented regression models '
+date: "2022-10-18"
+output:
+  pdf_document: default
+  word_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Aim 
+
+This appendix shows the 95% confidence intervals for the loess and linear/segmented models presented in the main paper. 
+
+# Data preparation 
+
+```{r}
+# load packages
+
+library(tidyverse)
+library(glue)
+
+# load data 
+hmd_lt <- read_rds("https://github.com/JonMinton/change-in-ex/blob/main/data/lifetables.rds?raw=true")
+
+
+# Labels for codes 
+country_code_lookup <- 
+  tribble(
+    ~code, ~country,
+    "DEUTNP", "Germany",
+    "DEUTE", "East Germany",
+    "DEUTW", "West Germany",
+    "ESP", "Spain",
+    "FRATNP", "France", 
+    "ITA", "Italy",
+    "GBRTENW", "England & Wales",
+    "GBR_SCO", "Scotland",
+    "DEUTSYNTH", "Synthetic Germany",
+    "NLD", "Netherlands"
+  )
+
+countries_of_interest <- c(
+  "GBRTENW",
+  "GBR_SCO",
+  "GBR_UK",
+  "FRATNP",
+  "ESP",
+  "ITA",
+  "DEUTNP",
+  "DEUTE", 
+  "DEUTW",
+  "NLD"
+)
+
+source("https://raw.githubusercontent.com/JonMinton/change-in-ex/main/R/make_synthetic_germany_functions.R")
+
+source("https://raw.githubusercontent.com/JonMinton/change-in-ex/main/R/make_pop_selection.R")
+
+
+change_in_ex_selected_countries <- 
+  hmd_ex_selected_countries_with_synth %>% 
+    group_by(code, x, sex) %>% 
+    arrange(year) %>% 
+    mutate(delta_ex = ex - lag(ex)) %>% 
+    ungroup() 
+
+```
+
+
+# LOESS smoother, confidence intervals 
+
+The following shows the LOESS smoother line with confidence intervals for annual changes in life expectancy at birth: 
+
+```{r}
+p_0_loess <- change_in_ex_selected_countries %>% 
+  filter(x == 0) %>% 
+  left_join(country_code_lookup) %>% 
+  mutate(country = factor(country, levels = c("England & Wales", "Scotland", "Synthetic Germany", "Spain", "France", "Italy", "Netherlands"))) %>% 
+  filter(!is.na(country)) %>% 
+  filter(between(year, 1980, 2020)) %>% 
+  mutate(delta_ex = delta_ex * 52.25) %>% # Convert to weeks
+  ggplot(aes(x = year, y = delta_ex)) + 
+  geom_point() + 
+  stat_smooth(se = TRUE) +  # Changed from se = FALSE
+  facet_grid(sex~country) + 
+  geom_hline(yintercept = 0) + 
+  scale_y_continuous(breaks = seq(-30, 50, by = 10)) +
+  theme(
+        axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)
+  ) + 
+  labs(
+    x = "Year",
+    y = "Change in life expectancy from previous year (in weeks)",
+    title = "Annual change in life expectancy at birth, selected countries",
+    subtitle = "Line: nonlinear smoother over the points",
+    caption =  "Source: Human Mortality Database. Synthetic Germany based on 20% East/80% West German population weighting"
+  )
+
+p_0_loess
+```
+
+And the following shows the same for life expectancy from age 65 years 
+
+```{r}
+p_65_loess <- change_in_ex_selected_countries %>% 
+  filter(x == 65) %>% 
+  left_join(country_code_lookup) %>% 
+  mutate(country = factor(country, levels = c("England & Wales", "Scotland", "Synthetic Germany", "Spain", "France", "Italy", "Netherlands"))) %>% 
+  filter(!is.na(country)) %>% 
+  filter(between(year, 1980, 2020)) %>% 
+  mutate(delta_ex = delta_ex * 52.25) %>% # Convert to weeks
+  ggplot(aes(x = year, y = delta_ex)) + 
+  geom_point() + 
+  stat_smooth(se = TRUE) + # changed from se = FALSE 
+  facet_grid(sex~country) + 
+  geom_hline(yintercept = 0) + 
+  scale_y_continuous(breaks = seq(-30, 50, by = 10)) +
+  theme(
+        axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)
+  ) + 
+  labs(
+    x = "Year",
+    y = "Change in life expectancy from previous year (in weeks)",
+    title = "Annual change in life expectancy at age 65, selected countries",
+    subtitle = "Line: nonlinear smoother over the points",
+    caption =  "Source: Human Mortality Database. Synthetic Germany based on 20% East/80% West German population weighting"
+  )
+
+p_65_loess
+```
+
+We can see that the 95% CI on the smoother includes values below zero for a number of populations. 
+
+Within the above, and in the main paper, the LOESS smoother is called in ggplot2's  `stat_smooth` function, which uses slightly different parameterisation than if the `loess` function in the `stats` packages were called directly. For consistency with the main paper we can extract the point estimate, lower and upper CIs, and standard error, directly from the above ggplot objects. The following function does this:
+
+```{r}
+extract_loess_ci <- function(p){
+  b <- ggplot_build(p)
+  panel_lookup <- b$layout$layout
+  
+  # get smoother values
+  p_loess <- b$data[[2]]
+  
+  # Join and simplify 
+  
+  sm <- p_loess %>% 
+    select(x, y, ymin, ymax, se, PANEL) %>% 
+    left_join(panel_lookup)
+  
+  # find last year for each country 
+  
+  max_years <- p$data %>% 
+    group_by(country, sex) %>% 
+    filter(year == max(year)) %>% 
+    select(country, sex, max_year = year)
+  
+  sm %>% 
+    select(x, y, ymin, ymax, se, sex, country) %>% 
+    left_join(max_years) %>% 
+    filter(x == max_year)
+}
+
+```
+
+And the following code applies the function to the two previously created ggplot2 objects 
+
+```{r}
+loess_lastyear_x0 <- 
+extract_loess_ci(p_0_loess) %>% 
+  rename(year = x, y_point = y,
+         y_lower = ymin, y_upper = ymax, y_se = se) %>% 
+  mutate(x = 0)  %>% # x now starting age  
+  select(year, x, sex, country, everything(), -max_year)
+
+loess_lastyear_x65 <- 
+extract_loess_ci(p_65_loess) %>% 
+  rename(year = x, y_point = y,
+         y_lower = ymin, y_upper = ymax, y_se = se) %>% 
+  mutate(x = 65)  %>% # x now starting age  
+  select(year, x, sex, country, everything(), -max_year)
+
+loess_lastyear_both <- 
+  bind_rows(loess_lastyear_x0, loess_lastyear_x65)
+
+loess_lastyear_both
+```
+The estimates are in weeks of increase per year. The following function produces summary statements for each population
+
+```{r}
+
+summarise_loess <- function(df, cntry, dp = 2){
+  df <- df %>% filter(country == cntry)
+  
+  last_year <- df$year[1]
+  
+  y_x0_pt_m <- df %>% filter(x == 0, sex == "male") %>% pull("y_point") %>% round(dp)
+  y_x65_pt_m <- df %>% filter(x == 65, sex == "male") %>% pull("y_point") %>% round(dp)
+  y_x0_pt_f <- df %>% filter(x == 0, sex == "female") %>% pull("y_point") %>% round(dp)
+  y_x65_pt_f <- df %>% filter(x == 65, sex == "female") %>% pull("y_point") %>% round(dp)
+
+  y_x0_lwr_m <- df %>% filter(x == 0, sex == "male") %>% pull("y_lower") %>% round(dp)
+  y_x65_lwr_m <- df %>% filter(x == 65, sex == "male") %>% pull("y_lower") %>% round(dp)
+  y_x0_lwr_f <- df %>% filter(x == 0, sex == "female") %>% pull("y_lower") %>% round(dp)
+  y_x65_lwr_f <- df %>% filter(x == 65, sex == "female") %>% pull("y_lower") %>% round(dp)
+
+  y_x0_upr_m <- df %>% filter(x == 0, sex == "male") %>% pull("y_upper") %>% round(dp)
+  y_x65_upr_m <- df %>% filter(x == 65, sex == "male") %>% pull("y_upper") %>% round(dp)
+  y_x0_upr_f <- df %>% filter(x == 0, sex == "female") %>% pull("y_upper") %>% round(dp)
+  y_x65_upr_f <- df %>% filter(x == 65, sex == "female") %>% pull("y_upper") %>% round(dp)
+
+
+  y_x0_se_m <- df %>% filter(x == 0, sex == "male") %>% pull("y_se") %>% round(dp)
+  y_x65_se_m <- df %>% filter(x == 65, sex == "male") %>% pull("y_se") %>% round(dp)
+  y_x0_se_f <- df %>% filter(x == 0, sex == "female") %>% pull("y_se") %>% round(dp)
+  y_x65_se_f <- df %>% filter(x == 65, sex == "female") %>% pull("y_se") %>% round(dp)
+  
+  pfall_x0_m <- pnorm(0, y_x0_pt_m, y_x0_se_m) %>% round(dp)
+  pfall_x65_m <- pnorm(0, y_x65_pt_m, y_x65_se_m) %>% round(dp)
+  pfall_x0_f <- pnorm(0, y_x0_pt_f, y_x0_se_f) %>% round(dp)
+  pfall_x65_f <- pnorm(0, y_x65_pt_f, y_x65_se_f) %>% round(dp)
+  
+  glue::glue("{cntry} in {last_year}: \nFor males, LOESS estimated annual changes of {y_x0_pt_m} (95% CI {y_x0_lwr_m} to {y_x0_upr_m}) weeks/year for life expectancy at birth, and annual changes of {y_x65_pt_m} (95% CI {y_x65_lwr_m} to {y_x65_upr_m}) weeks/year for life expectancy at age 65; the probability that life expectancy fell in the last observed year was {pfall_x0_m} for life expectancy at birth, and {pfall_x65_m} for life expectancy from age 65. \nFor females, LOESS estimated annual changes of {y_x0_pt_f} (95% CI {y_x0_lwr_f} to {y_x0_upr_f}) weeks/year for life expectancy at birth, and annual changes of {y_x65_pt_f} (95% CI {y_x65_lwr_f} to {y_x65_upr_f}) weeks/year for life expectancy at age 65; the probability that life expectancy fell in the last observed year was {pfall_x0_f} for life expectancy at birth, and {pfall_x65_f} for life expectancy from age 65.")    
+}
+```
+
+The following are descriptive summaries of life expectancy trends in the last observed year, as estimated through the LOESS method: 
+
+```{r}
+unique(loess_lastyear_both$country) %>% as.character() %>%  
+  map(summarise_loess, df = loess_lastyear_both) 
+
+
+```
+We can see from the above summaries that the confidence intervals for all populations tend to include negative values, and that the resulting estimated probabilities that the true value in the last observed year (conditional on the model) is below zero, i.e. falling, is substantial (at least 12%) for populations and starting ages considered. For England & Wales, and Scotland (except males from age 65), it is more probable than not that life expectancy fell in the last observed year.
+
+
+## Linear regression and Breakpoint confidence intervals 
+
+```{r}
+
+
+estimate_breakpoints_and_pval <- function(df){
+  null_mdl <- lm(ex ~ year, data = df) 
+  seg_mdl <- segmented::segmented(null_mdl, seg.Z= ~year, psi = 2010)
+  seg2_mdl <- segmented::segmented(null_mdl, seg.z= ~year, psi= c(1985, 2010)) # added to test
+
+  list(
+    null = null_mdl, 
+    seg = seg_mdl,
+    seg2 = seg2_mdl
+  )
+}
+
+segmented_breakpoints_models <- 
+  hmd_ex_selected_countries_with_synth %>% 
+  filter(code != "DEUTNP") %>%   
+  filter(year >= 1979) %>% 
+  group_by(code, x, sex) %>% 
+  nest() %>% 
+  mutate(
+    mdl_outputs = map(data, estimate_breakpoints_and_pval)
+  ) %>% 
+  unnest_longer(mdl_outputs) 
+
+
+# Now let's get the BIC for each model 
+
+make_predictions <- function(mdl, dta = tibble(year = 1980:2020)){
+  tibble(
+    year = dta$year, 
+    ex_pred = predict(mdl, newdata = dta)
+  )
+}
+
+best_model_predictions_descriptions <- 
+segmented_breakpoints_models %>% 
+  mutate(bic = map_dbl(mdl_outputs, BIC)) %>% 
+  group_by(code, x, sex) %>% 
+  mutate(rank_bic = rank(bic)) %>%
+  filter(rank_bic == 1) %>% 
+  mutate(
+    best_model = case_when(
+      mdl_outputs_id == 'seg2' ~ "Two breakpoints",
+      mdl_outputs_id == 'seg'  ~ "One breakpoint", 
+      mdl_outputs_id == 'null' ~ "No breakpoints"
+    )
+  ) %>% 
+  mutate(
+    first_breakpoint =    map2_dbl(
+      mdl_outputs_id, mdl_outputs, 
+      function(x, y){
+        if (x == 'null'  ) {NA_real_} else {
+          y[["psi"]][1,2]
+        }
+      }                        
+      ),
+      first_breakpoint_se = map2_dbl(
+        mdl_outputs_id, mdl_outputs,
+        function(x, y){
+        if (x == 'null'  ) {NA_real_} else {
+          y[["psi"]][1,3]
+        }
+          
+        }
+      ),
+    second_breakpoint = map2_dbl(
+      mdl_outputs_id, mdl_outputs,
+      function(x, y){
+        if (x == 'seg2') {
+          y[["psi"]][2,2]
+        } else  {
+            NA_real_
+          }
+      }                           
+      ),
+    second_breakpoint_se = map2_dbl(
+      mdl_outputs_id, mdl_outputs,
+      function(x, y){
+        if (x == 'seg2') {
+          y[["psi"]][2,3]
+        } else  {
+            NA_real_
+          }
+      }
+    )
+  ) %>%  # let's add predictions too 
+  mutate(
+    pred_data = map(mdl_outputs, make_predictions),
+    joined_data = map2(data, pred_data, left_join)
+  ) %>% 
+  select(code, x, sex, joined_data, first_breakpoint:second_breakpoint_se) %>% 
+  unnest(joined_data)
+
+
+```
+
+```{r}
+best_breakpoint_model_predictions <- 
+  segmented_breakpoints_models %>% 
+    mutate(bic = map_dbl(mdl_outputs, BIC)) %>% 
+    group_by(code, x, sex) %>% 
+    filter(bic == min(bic)) %>% 
+    mutate(predictions = map2(mdl_outputs, data, predict, interval = "confidence", level = 0.95)) %>% 
+    mutate(data_augmented = map2(data, predictions, bind_cols)) %>% 
+    select(code, x, sex, data_augmented) %>% 
+    ungroup() %>% 
+    unnest(data_augmented)
+
+```
+
+
+```{r}
+best_breakpoint_model_predictions %>% 
+  left_join(country_code_lookup) %>% 
+  mutate(country = factor(country, levels = c("England & Wales", "Scotland", "Synthetic Germany", "Spain", "France", "Italy", "Netherlands"))) %>% 
+  filter(!is.na(country)) %>% 
+  filter(x == 0) %>% 
+  ggplot(aes(x = year)) + 
+  facet_grid(sex ~ country) + 
+  geom_point(aes(y = ex), alpha = 0.35) + 
+  geom_line(aes(y = fit), colour = "red") +
+  geom_ribbon(aes(ymin = lwr, ymax = upr), fill = "red", colour = NA, alpha = 0.5) +
+  theme(
+        axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)
+  ) + 
+  labs(
+    x = "Year",
+    y = "Life expectancy (years)",
+    title = "Predicted and observed life expectancy at birth, selected countries",
+    subtitle = "Line: Best segmented regression model for the country",
+    caption =  "Source: Human Mortality Database. Synthetic Germany based on 20% East/80% West German population weighting"
+  )
+
+```
+The confidence intervals are quite hard to see given the data points. In the figure below they are shown without the points
+
+```{r}
+best_breakpoint_model_predictions %>% 
+  left_join(country_code_lookup) %>% 
+  mutate(country = factor(country, levels = c("England & Wales", "Scotland", "Synthetic Germany", "Spain", "France", "Italy", "Netherlands"))) %>% 
+  filter(!is.na(country)) %>% 
+  filter(x == 0) %>% 
+  ggplot(aes(x = year)) + 
+  facet_grid(sex ~ country) + 
+#  geom_point(aes(y = ex), alpha = 0.35) + 
+  geom_line(aes(y = fit), colour = "red") +
+  geom_ribbon(aes(ymin = lwr, ymax = upr), fill = "red", colour = NA, alpha = 0.5) +
+  theme(
+        axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)
+  ) + 
+  labs(
+    x = "Year",
+    y = "Life expectancy (years)",
+    title = "Predicted and observed life expectancy at birth, selected countries",
+    subtitle = "Line: Best segmented regression model for the country",
+    caption =  "Source: Human Mortality Database. Synthetic Germany based on 20% East/80% West German population weighting"
+  )
+
+
+```
+They are repeated, with and then without points, for life expectancy from age 65 below:
+
+```{r}
+best_breakpoint_model_predictions %>% 
+  left_join(country_code_lookup) %>% 
+  mutate(country = factor(country, levels = c("England & Wales", "Scotland", "Synthetic Germany", "Spain", "France", "Italy", "Netherlands"))) %>% 
+  filter(!is.na(country)) %>% 
+  filter(x == 65) %>% 
+  ggplot(aes(x = year)) + 
+  facet_grid(sex ~ country) + 
+  geom_point(aes(y = ex), alpha = 0.35) + 
+  geom_line(aes(y = fit), colour = "red") +
+  geom_ribbon(aes(ymin = lwr, ymax = upr), fill = "red", colour = NA, alpha = 0.5) +
+  theme(
+        axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)
+  ) + 
+  labs(
+    x = "Year",
+    y = "Life expectancy (years)",
+    title = "Predicted and observed life expectancy at age 65, selected countries",
+    subtitle = "Line: Best segmented regression model for the country",
+    caption =  "Source: Human Mortality Database. Synthetic Germany based on 20% East/80% West German population weighting"
+  )
+
+
+
+best_breakpoint_model_predictions %>% 
+  left_join(country_code_lookup) %>% 
+  mutate(country = factor(country, levels = c("England & Wales", "Scotland", "Synthetic Germany", "Spain", "France", "Italy", "Netherlands"))) %>% 
+  filter(!is.na(country)) %>% 
+  filter(x == 65) %>% 
+  ggplot(aes(x = year)) + 
+  facet_grid(sex ~ country) + 
+#  geom_point(aes(y = ex), alpha = 0.35) + 
+  geom_line(aes(y = fit), colour = "red") +
+  geom_ribbon(aes(ymin = lwr, ymax = upr), fill = "red", colour = NA, alpha = 0.5) +
+  theme(
+        axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)
+  ) + 
+  labs(
+    x = "Year",
+    y = "Life expectancy (years)",
+    title = "Predicted and observed life expectancy at age 65, selected countries",
+    subtitle = "Line: Best segmented regression model for the country",
+    caption =  "Source: Human Mortality Database. Synthetic Germany based on 20% East/80% West German population weighting"
+  )
+
+
+```
+
+```{r}
+pred_differenced <- 
+  best_breakpoint_model_predictions %>% 
+    left_join(country_code_lookup) %>% 
+    mutate(country = factor(country, levels = c("England & Wales", "Scotland", "Synthetic Germany", "Spain", "France", "Italy", "Netherlands"))) %>% 
+    filter(!is.na(country)) %>% 
+    group_by(country, sex, x) %>% 
+    arrange(year) %>% 
+    mutate(
+      diff_ex = 52.25 * (ex - lag(ex)),
+      diff_fit = 52.25 * (fit - lag(fit)),
+      adj_upr = 52.25 * (upr - fit),
+      adj_lwr = 52.25 * (lwr - fit),
+      diff_upr = diff_fit + adj_upr,
+      diff_lwr = diff_fit + adj_lwr
+    ) %>% 
+    filter(!is.na(diff_fit)) 
+```
+
+The following shows differences with confidence intervals for life expectancy from birth:
+
+
+```{r}
+pred_differenced %>%
+  filter(x == 0) %>% 
+  ggplot(aes(year)) + 
+  geom_point(aes(y = diff_ex), alpha = 0.35) +
+  facet_grid(sex ~ country) +
+  geom_hline(yintercept = 0) + 
+  geom_line(aes(y = diff_fit), colour = "red") +
+  geom_ribbon(aes(ymin = diff_lwr, ymax = diff_upr), colour = NA, fill = "red", alpha = 0.35) +
+  theme(
+    axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)
+  ) + 
+  scale_y_continuous(breaks = seq(-30, 50, by = 10)) +
+  labs(
+    x = "Year",
+    y = "Change in life expectancy from previous year (weeks)",
+    title = "Predicted and observed annual changes in life expectancy at birth, selected countries",
+    subtitle = "Line: Best segmented regression model for the country",
+    caption =  "Source: Human Mortality Database. Synthetic Germany based on 20% East/80% West German population weighting"
+  )
+
+    
+
+
+```
+
+
+And the following shows the same for life expectancy changes from age 65 
+
+
+```{r}
+pred_differenced %>%
+  filter(x == 65) %>% 
+  ggplot(aes(year)) + 
+  geom_point(aes(y = diff_ex), alpha = 0.35) +
+  facet_grid(sex ~ country) +
+  geom_hline(yintercept = 0) + 
+  geom_line(aes(y = diff_fit), colour = "red") +
+  geom_ribbon(aes(ymin = diff_lwr, ymax = diff_upr), colour = NA, fill = "red", alpha = 0.35) +
+  theme(
+    axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)
+  ) + 
+  scale_y_continuous(breaks = seq(-30, 50, by = 10)) +
+  labs(
+    x = "Year",
+    y = "Change in life expectancy from previous year (weeks)",
+    title = "Predicted and observed annual changes in life expectancy at age 65, selected countries",
+    subtitle = "Line: Best segmented regression model for the country",
+    caption =  "Source: Human Mortality Database. Synthetic Germany based on 20% East/80% West German population weighting"
+  )
+
+```
+As with the LOESS model, we can can present the point estimates, 95% CIs, and implied probabilities that the values in the last observed year are below zero. 
+
+```{r}
+summarise_reg_seg <- function(df, cntry, dp = 2){
+  df <- df %>% 
+    filter(country == cntry) %>% 
+    filter(year == max(year))
+  
+  last_year <- max(df$year)
+  
+  y_x0_pt_m <- df %>% filter(x == 0, sex == "male") %>% pull("diff_fit") 
+  y_x65_pt_m <- df %>% filter(x == 65, sex == "male") %>% pull("diff_fit") 
+  y_x0_pt_f <- df %>% filter(x == 0, sex == "female") %>% pull("diff_fit") 
+  y_x65_pt_f <- df %>% filter(x == 65, sex == "female") %>% pull("diff_fit") 
+
+  y_x0_lwr_m <- df %>% filter(x == 0, sex == "male") %>% pull("diff_lwr") 
+  y_x65_lwr_m <- df %>% filter(x == 65, sex == "male") %>% pull("diff_lwr") 
+  y_x0_lwr_f <- df %>% filter(x == 0, sex == "female") %>% pull("diff_lwr") 
+  y_x65_lwr_f <- df %>% filter(x == 65, sex == "female") %>% pull("diff_lwr") 
+
+  y_x0_upr_m <- df %>% filter(x == 0, sex == "male") %>% pull("diff_upr") 
+  y_x65_upr_m <- df %>% filter(x == 65, sex == "male") %>% pull("diff_upr") 
+  y_x0_upr_f <- df %>% filter(x == 0, sex == "female") %>% pull("diff_upr") 
+  y_x65_upr_f <- df %>% filter(x == 65, sex == "female") %>% pull("diff_upr") 
+
+
+  y_x0_se_m <-  c(y_x0_upr_m - y_x0_pt_m, y_x0_pt_m - y_x0_lwr_m) %>% `/`(1.96) %>% mean() %>% round(dp)
+  y_x65_se_m <- c(y_x65_upr_m - y_x65_pt_m, y_x65_pt_m - y_x65_lwr_m) %>% `/`(1.96) %>% mean() %>% round(dp)
+  y_x0_se_f <-  c(y_x0_upr_f - y_x0_pt_f, y_x0_pt_f - y_x0_lwr_f) %>% `/`(1.96) %>% mean() %>% round(dp)
+  y_x65_se_f <- c(y_x65_upr_f - y_x65_pt_f, y_x65_pt_f - y_x65_lwr_f) %>% `/`(1.96) %>% mean() %>% round(dp)
+  
+  y_x0_lwr_m <- y_x0_lwr_m %>% round(dp)
+  y_x65_lwr_m <- y_x65_lwr_m %>% round(dp) 
+  y_x0_lwr_f <- y_x0_lwr_f %>% round(dp)
+  y_x65_lwr_f <- y_x65_lwr_f %>% round(dp)
+
+  y_x0_upr_m <- y_x0_upr_m %>% round(dp)
+  y_x65_upr_m <- y_x65_upr_m %>% round(dp)
+  y_x0_upr_f <- y_x0_upr_f %>% round(dp)
+  y_x65_upr_f <- y_x65_upr_f %>% round(dp) 
+  
+  y_x0_pt_m <- y_x0_pt_m %>% round(dp)
+  y_x65_pt_m <- y_x65_pt_m %>% round(dp)
+  y_x0_pt_f <- y_x0_pt_f %>% round(dp)
+  y_x65_pt_f <- y_x65_pt_f %>% round(dp) 
+  
+  pfall_x0_m <- pnorm(0, y_x0_pt_m, y_x0_se_m) %>% round(dp)
+  pfall_x65_m <- pnorm(0, y_x65_pt_m, y_x65_se_m) %>% round(dp)
+  pfall_x0_f <- pnorm(0, y_x0_pt_f, y_x0_se_f) %>% round(dp)
+  pfall_x65_f <- pnorm(0, y_x65_pt_f, y_x65_se_f) %>% round(dp)
+  
+  glue::glue("{cntry} in {last_year}: \nFor males, segmented/linear estimated annual changes of {y_x0_pt_m} (95% CI {y_x0_lwr_m} to {y_x0_upr_m}) weeks/year for life expectancy at birth, and annual changes of {y_x65_pt_m} (95% CI {y_x65_lwr_m} to {y_x65_upr_m}) weeks/year for life expectancy at age 65; the probability that life expectancy fell in the last observed year was {pfall_x0_m} for life expectancy at birth, and {pfall_x65_m} for life expectancy from age 65. \nFor females, segmented/linear estimated annual changes of {y_x0_pt_f} (95% CI {y_x0_lwr_f} to {y_x0_upr_f}) weeks/year for life expectancy at birth, and annual changes of {y_x65_pt_f} (95% CI {y_x65_lwr_f} to {y_x65_upr_f}) weeks/year for life expectancy at age 65; the probability that life expectancy fell in the last observed year was {pfall_x0_f} for life expectancy at birth, and {pfall_x65_f} for life expectancy from age 65.")    
+}
+
+```
+
+As before, we can produce summary statements for each country as follows:
+
+```{r}
+unique(pred_differenced$country) %>% as.character() %>%  
+  map(summarise_reg_seg , df = pred_differenced) 
+
+```
+
