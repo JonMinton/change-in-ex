@@ -768,7 +768,7 @@ best_breakpoint_model_predictions %>%
   group_by(country, sex) %>% 
   arrange(year) %>% 
   mutate(
-    ch_ex      = 9 (ex - lag(ex)                 ), 
+    ch_ex      = 52.25 * (ex - lag(ex)),             
     ch_ex_pred = 52.25 * (prediction - lag(prediction) )
   ) %>% 
   filter(!is.na(ch_ex), !is.na(ch_ex_pred))  %>% 
