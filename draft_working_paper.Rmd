@@ -168,6 +168,7 @@ hmd_ex_selected_countries_with_synth %>%
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
 
 ggsave("figures/proposed/e0_trend.png", height = 20, width = 20, units = "cm", dpi = 300)
+ggsave("figures/proposed/e0_trend.tiff", height = 20, width = 20, units = "cm", dpi = 300)
 
 ```
 
@@ -216,6 +217,7 @@ hmd_ex_selected_countries_with_synth %>%
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
 
 ggsave("figures/proposed/e65_trend.png", height = 20, width = 20, units = "cm", dpi = 300)
+ggsave("figures/proposed/e65_trend.tiff", height = 20, width = 20, units = "cm", dpi = 300)
 ```
 
 
@@ -284,6 +286,7 @@ change_in_ex_selected_countries %>%
   )
 
 ggsave("figures/proposed/che0_smoother.png", height = 15, width = 25, units = "cm", dpi = 300)
+ggsave("figures/proposed/che0_smoother.tiff", height = 15, width = 25, units = "cm", dpi = 300)
 
 
 ```
@@ -317,6 +320,7 @@ change_in_ex_selected_countries %>%
   )
 
 ggsave("figures/proposed/che65_smoother.png", height = 15, width = 25, units = "cm", dpi = 300)
+ggsave("figures/proposed/che65_smoother.tiff", height = 15, width = 25, units = "cm", dpi = 300)
 
 
 
@@ -374,6 +378,7 @@ hmd_ex_selected_countries_with_synth %>%
   facet_wrap(~x)
 
 ggsave("figures/proposed/average_improvement1980-2020.png", height = 20, width = 30, units = "cm", dpi = 300)
+ggsave("figures/proposed/average_improvement1980-2020.tiff", height = 20, width = 30, units = "cm", dpi = 300)
 
 
 hmd_ex_selected_countries_with_synth %>% 
@@ -421,6 +426,7 @@ hmd_ex_selected_countries_with_synth %>%
   facet_wrap(~x)
 
 ggsave("figures/proposed/reduced_average_improvement1980-2020.png", height = 20, width = 25, units = "cm", dpi = 300)
+ggsave("figures/proposed/reduced_average_improvement1980-2020.tiff", height = 20, width = 25, units = "cm", dpi = 300)
 
   
 ```
@@ -717,6 +723,7 @@ best_breakpoint_model_predictions %>%
   )
 
 ggsave("figures/proposed/e0_breakpoint.png", height = 15, width = 25, units = "cm", dpi = 300)
+ggsave("figures/proposed/e0_breakpoint.tiff", height = 15, width = 25, units = "cm", dpi = 300)
 
 ```
 Now, at age 65
@@ -743,7 +750,7 @@ best_breakpoint_model_predictions %>%
   )
 
 ggsave("figures/proposed/e65_breakpoint.png", height = 15, width = 25, units = "cm", dpi = 300)
-
+ggsave("figures/proposed/e65_breakpoint.tiff", height = 15, width = 25, units = "cm", dpi = 300)
 ```
 
 
@@ -783,7 +790,7 @@ best_breakpoint_model_predictions %>%
   )
 
 ggsave("figures/proposed/ch_e0_breakpoint.png", height = 15, width = 25, units = "cm", dpi = 300)
-
+ggsave("figures/proposed/ch_e0_breakpoint.tiff", height = 15, width = 25, units = "cm", dpi = 300)
 
 ```
 And finally for age 65
@@ -820,7 +827,7 @@ best_breakpoint_model_predictions %>%
   )
 
 ggsave("figures/proposed/ch_e65_breakpoint.png", height = 15, width = 25, units = "cm", dpi = 300)
-
+ggsave("figures/proposed/ch_e65_breakpoint.tiff", height = 15, width = 25, units = "cm", dpi = 300)
 ```
 
 I want to save segmented_breakpoints_models so I can explore it in an app 
